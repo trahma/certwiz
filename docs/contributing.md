@@ -20,7 +20,7 @@ Found a bug or have a feature request? Please open an issue:
 1. Check if the issue already exists
 2. Use a clear and descriptive title
 3. Provide as much information as possible:
-   - certwiz version (`certwiz --version`)
+   - certwiz version (`cert version`)
    - Operating system and version
    - Steps to reproduce the issue
    - Expected vs actual behavior
@@ -41,16 +41,25 @@ We actively welcome pull requests! Here's how:
 
 #### Setup Development Environment
 
-1. Fork the repository
+1. Fork the repository on GitHub
 2. Clone your fork:
    ```bash
    git clone https://github.com/YOUR-USERNAME/certwiz
    cd certwiz
    ```
-
-3. Add upstream remote:
+3. Install Go 1.20 or higher (if not already installed)
+4. Install development tools:
    ```bash
-   git remote add upstream https://github.com/certwiz/certwiz
+   # Install the latest version to test against
+   curl -sSL https://raw.githubusercontent.com/trahma/certwiz/main/install.sh | bash
+   
+   # Build from source for development
+   make build
+   ```
+
+5. Add upstream remote:
+   ```bash
+   git remote add upstream https://github.com/trahma/certwiz
    ```
 
 4. Create a branch:
