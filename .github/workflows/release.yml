@@ -32,19 +32,47 @@ jobs:
         mkdir -p release
         
         # Build for multiple platforms
-        GOOS=darwin GOARCH=amd64 go build -ldflags "-X main.version=${{ steps.version.outputs.VERSION }}" -o release/cert-darwin-amd64 .
-        GOOS=darwin GOARCH=arm64 go build -ldflags "-X main.version=${{ steps.version.outputs.VERSION }}" -o release/cert-darwin-arm64 .
-        GOOS=linux GOARCH=amd64 go build -ldflags "-X main.version=${{ steps.version.outputs.VERSION }}" -o release/cert-linux-amd64 .
-        GOOS=linux GOARCH=arm64 go build -ldflags "-X main.version=${{ steps.version.outputs.VERSION }}" -o release/cert-linux-arm64 .
-        GOOS=windows GOARCH=amd64 go build -ldflags "-X main.version=${{ steps.version.outputs.VERSION }}" -o release/cert-windows-amd64.exe .
+        # Note: Version is injected into cmd.version
+        VERSION=${{ steps.version.outputs.VERSION }}
+        
+        # macOS builds
+        GOOS=darwin GOARCH=amd64 go build -ldflags "-X certwiz/cmd.version=${VERSION} -s -w" -o release/cert-darwin-amd64 .
+        GOOS=darwin GOARCH=arm64 go build -ldflags "-X certwiz/cmd.version=${VERSION} -s -w" -o release/cert-darwin-arm64 .
+        
+        # Linux builds
+        GOOS=linux GOARCH=amd64 go build -ldflags "-X certwiz/cmd.version=${VERSION} -s -w" -o release/cert-linux-amd64 .
+        GOOS=linux GOARCH=arm64 go build -ldflags "-X certwiz/cmd.version=${VERSION} -s -w" -o release/cert-linux-arm64 .
+        GOOS=linux GOARCH=386 go build -ldflags "-X certwiz/cmd.version=${VERSION} -s -w" -o release/cert-linux-386 .
+        
+        # Windows builds
+        GOOS=windows GOARCH=amd64 go build -ldflags "-X certwiz/cmd.version=${VERSION} -s -w" -o release/cert-windows-amd64.exe .
+        GOOS=windows GOARCH=arm64 go build -ldflags "-X certwiz/cmd.version=${VERSION} -s -w" -o release/cert-windows-arm64.exe .
+        GOOS=windows GOARCH=386 go build -ldflags "-X certwiz/cmd.version=${VERSION} -s -w" -o release/cert-windows-386.exe .
+        
+        # FreeBSD builds
+        GOOS=freebsd GOARCH=amd64 go build -ldflags "-X certwiz/cmd.version=${VERSION} -s -w" -o release/cert-freebsd-amd64 .
+        GOOS=freebsd GOARCH=arm64 go build -ldflags "-X certwiz/cmd.version=${VERSION} -s -w" -o release/cert-freebsd-arm64 .
         
         # Create archives
         cd release
+        
+        # macOS archives
         tar czf cert-darwin-amd64.tar.gz cert-darwin-amd64
         tar czf cert-darwin-arm64.tar.gz cert-darwin-arm64
+        
+        # Linux archives
         tar czf cert-linux-amd64.tar.gz cert-linux-amd64
         tar czf cert-linux-arm64.tar.gz cert-linux-arm64
+        tar czf cert-linux-386.tar.gz cert-linux-386
+        
+        # Windows archives
         zip cert-windows-amd64.zip cert-windows-amd64.exe
+        zip cert-windows-arm64.zip cert-windows-arm64.exe
+        zip cert-windows-386.zip cert-windows-386.exe
+        
+        # FreeBSD archives
+        tar czf cert-freebsd-amd64.tar.gz cert-freebsd-amd64
+        tar czf cert-freebsd-arm64.tar.gz cert-freebsd-arm64
         
         # Generate checksums
         sha256sum *.tar.gz *.zip > checksums.txt
@@ -60,32 +88,90 @@ jobs:
           release/*.zip
           release/checksums.txt
         body: |
-          ## What's Changed
+          ## CertWiz ${{ steps.version.outputs.VERSION }}
           
-          See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md) for details.
+          A user-friendly CLI tool for certificate management, similar to HTTPie but for certificates.
           
           ## Installation
           
-          ### macOS (Apple Silicon)
+          ### macOS
+          
+          **Apple Silicon (M1/M2/M3):**
           ```bash
           curl -L https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.VERSION }}/cert-darwin-arm64.tar.gz | tar xz
           sudo mv cert-darwin-arm64 /usr/local/bin/cert
           chmod +x /usr/local/bin/cert
           ```
           
-          ### macOS (Intel)
+          **Intel:**
           ```bash
           curl -L https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.VERSION }}/cert-darwin-amd64.tar.gz | tar xz
           sudo mv cert-darwin-amd64 /usr/local/bin/cert
           chmod +x /usr/local/bin/cert
           ```
           
-          ### Linux (amd64)
+          ### Linux
+          
+          **64-bit (amd64):**
           ```bash
           curl -L https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.VERSION }}/cert-linux-amd64.tar.gz | tar xz
           sudo mv cert-linux-amd64 /usr/local/bin/cert
           chmod +x /usr/local/bin/cert
           ```
           
+          **ARM64:**
+          ```bash
+          curl -L https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.VERSION }}/cert-linux-arm64.tar.gz | tar xz
+          sudo mv cert-linux-arm64 /usr/local/bin/cert
+          chmod +x /usr/local/bin/cert
+          ```
+          
+          **32-bit (386):**
+          ```bash
+          curl -L https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.VERSION }}/cert-linux-386.tar.gz | tar xz
+          sudo mv cert-linux-386 /usr/local/bin/cert
+          chmod +x /usr/local/bin/cert
+          ```
+          
           ### Windows
-          Download and extract `cert-windows-amd64.zip`, then add to your PATH.
+          
+          **64-bit:** Download `cert-windows-amd64.zip`
+          **ARM64:** Download `cert-windows-arm64.zip`
+          **32-bit:** Download `cert-windows-386.zip`
+          
+          Extract the zip file and add the `cert.exe` to your PATH.
+          
+          ### FreeBSD
+          
+          **64-bit:**
+          ```bash
+          curl -L https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.VERSION }}/cert-freebsd-amd64.tar.gz | tar xz
+          sudo mv cert-freebsd-amd64 /usr/local/bin/cert
+          chmod +x /usr/local/bin/cert
+          ```
+          
+          ## Verify Installation
+          
+          ```bash
+          cert version
+          ```
+          
+          ## Quick Start
+          
+          ```bash
+          # Inspect a certificate file
+          cert inspect cert.pem
+          
+          # Inspect a website's certificate
+          cert inspect google.com
+          
+          # Generate a self-signed certificate
+          cert generate --cn example.com
+          
+          # Convert formats
+          cert convert cert.pem cert.der --format der
+          ```
+          
+          ## Checksums
+          
+          SHA256 checksums are available in `checksums.txt`

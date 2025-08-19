@@ -1,0 +1,155 @@
+# This is an example .goreleaser.yml file with some sensible defaults.
+# Make sure to check the documentation at https://goreleaser.com
+project_name: certwiz
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: cert
+    binary: cert
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - windows
+      - darwin
+      - freebsd
+    goarch:
+      - amd64
+      - arm64
+      - "386"
+      - arm
+    goarm:
+      - "7"
+    ignore:
+      - goos: darwin
+        goarch: "386"
+      - goos: darwin
+        goarch: arm
+      - goos: windows
+        goarch: arm
+      - goos: freebsd
+        goarch: "386"
+      - goos: freebsd
+        goarch: arm
+    ldflags:
+      - -s -w -X certwiz/cmd.version={{.Version}}
+    mod_timestamp: '{{ .CommitTimestamp }}'
+
+archives:
+  - id: cert-archive
+    name_template: >-
+      cert-
+      {{- .Os }}-
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else if eq .Arch "386" }}i386
+      {{- else }}{{ .Arch }}{{ end }}
+      {{- if .Arm }}v{{ .Arm }}{{ end }}
+    format_overrides:
+      - goos: windows
+        format: zip
+    files:
+      - LICENSE
+      - README.md
+      - CHANGELOG.md
+
+checksum:
+  name_template: 'checksums.txt'
+  algorithm: sha256
+
+snapshot:
+  name_template: "{{ incpatch .Version }}-next"
+
+changelog:
+  sort: asc
+  use: github
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+      - '^chore:'
+      - Merge pull request
+      - Merge branch
+  groups:
+    - title: 'Features'
+      regexp: "^.*feat[(\\w)]*:+.*$"
+      order: 0
+    - title: 'Bug Fixes'
+      regexp: "^.*fix[(\\w)]*:+.*$"
+      order: 1
+    - title: 'Improvements'
+      regexp: "^.*perf[(\\w)]*:+.*$"
+      order: 2
+    - title: 'Security'
+      regexp: "^.*security[(\\w)]*:+.*$"
+      order: 3
+    - title: Other
+      order: 999
+
+release:
+  github:
+    owner: "{{ .Env.GITHUB_REPOSITORY_OWNER }}"
+    name: certwiz
+  
+  header: |
+    ## CertWiz {{ .Tag }}
+    
+    A user-friendly CLI tool for certificate management, similar to HTTPie but for certificates.
+    
+  footer: |
+    ## Installation
+    
+    ### macOS
+    ```bash
+    # Apple Silicon
+    curl -L https://github.com/{{ .Env.GITHUB_REPOSITORY }}/releases/download/{{ .Tag }}/cert-darwin-arm64.tar.gz | tar xz
+    sudo mv cert /usr/local/bin/
+    
+    # Intel
+    curl -L https://github.com/{{ .Env.GITHUB_REPOSITORY }}/releases/download/{{ .Tag }}/cert-darwin-x86_64.tar.gz | tar xz
+    sudo mv cert /usr/local/bin/
+    ```
+    
+    ### Linux
+    ```bash
+    # 64-bit
+    curl -L https://github.com/{{ .Env.GITHUB_REPOSITORY }}/releases/download/{{ .Tag }}/cert-linux-x86_64.tar.gz | tar xz
+    sudo mv cert /usr/local/bin/
+    
+    # ARM64
+    curl -L https://github.com/{{ .Env.GITHUB_REPOSITORY }}/releases/download/{{ .Tag }}/cert-linux-arm64.tar.gz | tar xz
+    sudo mv cert /usr/local/bin/
+    ```
+    
+    ### Windows
+    Download the appropriate zip file and add `cert.exe` to your PATH.
+    
+    ## Verify Installation
+    ```bash
+    cert version
+    ```
+    
+    **Full Documentation:** [README.md](https://github.com/{{ .Env.GITHUB_REPOSITORY }}/blob/main/README.md)
+
+brews:
+  - name: certwiz
+    homepage: https://github.com/{{ .Env.GITHUB_REPOSITORY }}
+    description: "A user-friendly CLI tool for certificate management"
+    license: "MIT"
+    skip_upload: auto
+    repository:
+      owner: "{{ .Env.GITHUB_REPOSITORY_OWNER }}"
+      name: homebrew-tap
+      branch: main
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+    commit_author:
+      name: goreleaserbot
+      email: goreleaserbot@users.noreply.github.com
+    commit_msg_template: "Brew formula update for {{ .ProjectName }} version {{ .Tag }}"
+    folder: Formula
+    test: |
+      system "#{bin}/cert", "version"
+    install: |
+      bin.install "cert"

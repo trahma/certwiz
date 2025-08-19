@@ -77,7 +77,25 @@ inspect-chain: build
 
 # Build all platforms
 build-all:
-	GOOS=darwin GOARCH=amd64 go build -o cert-darwin-amd64 .
-	GOOS=darwin GOARCH=arm64 go build -o cert-darwin-arm64 .
-	GOOS=linux GOARCH=amd64 go build -o cert-linux-amd64 .
-	GOOS=windows GOARCH=amd64 go build -o cert-windows-amd64.exe .
+	@echo "Building for all platforms..."
+	@mkdir -p dist
+	GOOS=darwin GOARCH=amd64 go build -ldflags "-s -w" -o dist/cert-darwin-amd64 .
+	GOOS=darwin GOARCH=arm64 go build -ldflags "-s -w" -o dist/cert-darwin-arm64 .
+	GOOS=linux GOARCH=amd64 go build -ldflags "-s -w" -o dist/cert-linux-amd64 .
+	GOOS=linux GOARCH=arm64 go build -ldflags "-s -w" -o dist/cert-linux-arm64 .
+	GOOS=linux GOARCH=386 go build -ldflags "-s -w" -o dist/cert-linux-386 .
+	GOOS=windows GOARCH=amd64 go build -ldflags "-s -w" -o dist/cert-windows-amd64.exe .
+	GOOS=windows GOARCH=arm64 go build -ldflags "-s -w" -o dist/cert-windows-arm64.exe .
+	GOOS=windows GOARCH=386 go build -ldflags "-s -w" -o dist/cert-windows-386.exe .
+	GOOS=freebsd GOARCH=amd64 go build -ldflags "-s -w" -o dist/cert-freebsd-amd64 .
+	@echo "Build complete! Binaries are in ./dist/"
+
+## release-test: Test release process locally with goreleaser
+release-test:
+	@echo "Testing release with goreleaser..."
+	@goreleaser release --snapshot --clean
+
+## release-local: Create a local release without publishing
+release-local:
+	@echo "Creating local release..."
+	@goreleaser release --snapshot --skip=publish --clean
