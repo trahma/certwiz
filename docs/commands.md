@@ -1,0 +1,388 @@
+# Command Reference
+
+Complete reference for all certwiz commands and options.
+
+## Global Options
+
+These options work with all commands:
+
+```
+-h, --help      Show help for any command
+    --version   Show version information
+```
+
+## inspect
+
+Inspect a certificate from a file or URL.
+
+### Synopsis
+
+```bash
+certwiz inspect [file|url] [flags]
+```
+
+### Options
+
+| Flag | Short | Description | Default |
+|------|-------|-------------|---------|
+| `--full` | | Show full certificate details including all extensions | `false` |
+| `--chain` | | Show certificate chain (for URLs only) | `false` |
+| `--port` | `-p` | Port for remote inspection | `443` |
+
+### Arguments
+
+- `target` - Certificate file path or URL/domain name (required)
+
+### Examples
+
+```bash
+# Inspect local certificate file
+certwiz inspect server.crt
+certwiz inspect /path/to/certificate.pem
+
+# Inspect remote certificate
+certwiz inspect google.com
+certwiz inspect https://example.com
+certwiz inspect api.example.com:8443
+
+# With options
+certwiz inspect google.com --full
+certwiz inspect github.com --chain
+certwiz inspect example.com --full --chain
+certwiz inspect internal.service --port 8443
+```
+
+### Output Details
+
+The inspect command shows:
+- **Subject**: Certificate subject DN
+- **Issuer**: Certificate issuer DN
+- **Serial Number**: Unique certificate identifier
+- **Valid From/To**: Certificate validity period
+- **Status**: Current validity status with days remaining
+- **Public Key**: Key type and size
+- **Signature Algorithm**: Algorithm used to sign the certificate
+- **SANs**: All Subject Alternative Names
+
+With `--full`:
+- **Key Usage**: Permitted key usage flags
+- **Extended Key Usage**: Extended usage purposes
+- **Basic Constraints**: CA status and path length
+- **Authority Info Access**: OCSP and CA issuer URLs
+- **CRL Distribution Points**: Certificate revocation list URLs
+- **Certificate Policies**: Policy OIDs
+- **Other Extensions**: Any additional extensions
+
+With `--chain`:
+- Complete certificate chain from server to root
+- Each certificate in the chain with basic info
+- Validity status for each certificate
+
+## generate
+
+Generate a self-signed certificate.
+
+### Synopsis
+
+```bash
+certwiz generate [flags]
+```
+
+### Options
+
+| Flag | Short | Description | Default |
+|------|-------|-------------|---------|
+| `--cn` | | Common Name for the certificate (required) | |
+| `--san` | | Subject Alternative Name (can be repeated) | |
+| `--days` | `-d` | Validity period in days | `365` |
+| `--key-size` | `-k` | RSA key size in bits | `2048` |
+| `--output` | `-o` | Output directory | `.` (current) |
+
+### SAN Format
+
+SANs can be specified as:
+- DNS names: `--san example.com`
+- Wildcards: `--san "*.example.com"`
+- IP addresses: `--san IP:192.168.1.1`
+
+### Examples
+
+```bash
+# Basic certificate
+certwiz generate --cn myapp.local
+
+# With multiple SANs
+certwiz generate --cn myapp.local \
+  --san myapp.local \
+  --san "*.myapp.local" \
+  --san localhost \
+  --san IP:127.0.0.1
+
+# Custom validity and key size
+certwiz generate --cn secure.app \
+  --days 730 \
+  --key-size 4096
+
+# Output to specific directory
+certwiz generate --cn myapp.local \
+  --output /etc/ssl/certs/
+```
+
+### Output Files
+
+The generate command creates:
+- `{cn}.crt` - Certificate file in PEM format
+- `{cn}.key` - Private key file in PEM format
+
+## convert
+
+Convert certificate between PEM and DER formats.
+
+### Synopsis
+
+```bash
+certwiz convert <input> <output> [flags]
+```
+
+### Options
+
+| Flag | Short | Description | Default |
+|------|-------|-------------|---------|
+| `--format` | `-f` | Output format (pem or der) | `pem` |
+
+### Arguments
+
+- `input` - Input certificate file (required)
+- `output` - Output certificate file (required)
+
+### Examples
+
+```bash
+# PEM to DER
+certwiz convert certificate.pem certificate.der --format der
+
+# DER to PEM
+certwiz convert certificate.der certificate.pem --format pem
+
+# Auto-detect input format
+certwiz convert input.crt output.der --format der
+```
+
+### Format Detection
+
+certwiz automatically detects the input format:
+- Files starting with `-----BEGIN` are treated as PEM
+- Binary files are treated as DER
+- Extensions (.pem, .der, .crt) are used as hints
+
+## verify
+
+Verify a certificate's validity and optionally check against a hostname.
+
+### Synopsis
+
+```bash
+certwiz verify <certificate> [flags]
+```
+
+### Options
+
+| Flag | Short | Description | Default |
+|------|-------|-------------|---------|
+| `--host` | | Hostname to verify against | |
+| `--ca` | | CA certificate for chain verification | |
+
+### Arguments
+
+- `certificate` - Certificate file to verify (required)
+
+### Examples
+
+```bash
+# Basic verification
+certwiz verify server.crt
+
+# Verify hostname match
+certwiz verify server.crt --host example.com
+
+# Verify against CA
+certwiz verify server.crt --ca ca-bundle.crt
+
+# Complete verification
+certwiz verify server.crt \
+  --host api.example.com \
+  --ca /etc/ssl/certs/ca-bundle.crt
+```
+
+### Verification Checks
+
+The verify command performs:
+
+**Basic checks:**
+- Certificate structure validity
+- Expiration date check
+- Basic constraints validation
+
+**With --host:**
+- Common Name matches hostname
+- SANs contain hostname
+- Wildcard matching (*.example.com)
+
+**With --ca:**
+- Certificate chain validation
+- Signature verification
+- Trust path to CA
+
+### Exit Codes
+
+All commands use standard exit codes:
+
+- `0` - Success
+- `1` - General error
+- `2` - Invalid arguments
+- `3` - Certificate validation failed
+
+## completion
+
+Generate shell completion scripts.
+
+### Synopsis
+
+```bash
+certwiz completion [bash|zsh|fish|powershell]
+```
+
+### Examples
+
+```bash
+# Bash
+certwiz completion bash > /etc/bash_completion.d/certwiz
+
+# Zsh
+certwiz completion zsh > "${fpath[1]}/_certwiz"
+
+# Fish
+certwiz completion fish > ~/.config/fish/completions/certwiz.fish
+
+# PowerShell
+certwiz completion powershell | Out-String | Invoke-Expression
+```
+
+## Environment Variables
+
+certwiz respects these environment variables:
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `NO_COLOR` | Disable colored output | |
+| `FORCE_COLOR` | Force colored output even in pipes | |
+| `CERTWIZ_PORT` | Default port for inspect command | `443` |
+
+### Examples
+
+```bash
+# Disable colors
+NO_COLOR=1 certwiz inspect google.com
+
+# Force colors in pipe
+FORCE_COLOR=1 certwiz inspect google.com | less -R
+
+# Set default port
+export CERTWIZ_PORT=8443
+certwiz inspect internal.service
+```
+
+## Output Formats
+
+### Default Output
+
+Human-readable formatted output with:
+- Colors and styling
+- Bordered tables
+- Status indicators
+- Smart text wrapping
+
+### Piping and Redirection
+
+When output is piped, certwiz:
+- Maintains structure but may reduce colors
+- Preserves all information
+- Suitable for grep/awk/sed processing
+
+```bash
+# Search for specific information
+certwiz inspect google.com | grep "Valid To"
+
+# Save to file
+certwiz inspect example.com --full > cert-details.txt
+
+# Process with jq (future JSON support)
+# certwiz inspect example.com --json | jq '.subject'
+```
+
+## Advanced Usage
+
+### Batch Operations
+
+```bash
+# Check multiple domains
+for domain in $(cat domains.txt); do
+  certwiz inspect "$domain" | grep Status
+done
+
+# Generate multiple certificates
+while IFS= read -r domain; do
+  certwiz generate --cn "$domain" --san "$domain"
+done < domains.txt
+
+# Convert all certificates in directory
+for cert in *.pem; do
+  certwiz convert "$cert" "${cert%.pem}.der" --format der
+done
+```
+
+### Integration with Other Tools
+
+```bash
+# With OpenSSL
+certwiz inspect example.com --full | grep -A2 "Key Usage"
+
+# With curl
+curl -k https://example.com/cert.pem | certwiz inspect -
+
+# With find
+find /etc/ssl -name "*.crt" -exec certwiz verify {} \;
+```
+
+### Scripting
+
+```bash
+#!/bin/bash
+# Certificate expiration monitor
+
+check_cert() {
+  local domain=$1
+  local output=$(certwiz inspect "$domain" 2>&1)
+  
+  if [[ $? -ne 0 ]]; then
+    echo "ERROR: Failed to check $domain"
+    return 1
+  fi
+  
+  if echo "$output" | grep -q "EXPIRED"; then
+    echo "CRITICAL: $domain certificate has expired"
+    return 2
+  elif echo "$output" | grep -q "EXPIRING SOON"; then
+    echo "WARNING: $domain certificate expiring soon"
+    return 1
+  else
+    echo "OK: $domain certificate is valid"
+    return 0
+  fi
+}
+
+# Check all domains
+for domain in example.com api.example.com www.example.com; do
+  check_cert "$domain"
+done
+```

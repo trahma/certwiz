@@ -1,0 +1,68 @@
+# Binaries (only in root)
+/cert
+/certwiz
+*.exe
+
+# Test certificates
+*.crt
+*.key
+*.der
+*.pem
+*.p12
+*.pfx
+
+# Go build artifacts
+*.test
+*.out
+vendor/
+dist/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Python artifacts (if any legacy)
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+env/
+.env
+
+# Build directories
+build/
+bin/
+target/
+
+# Coverage
+*.cover
+*.coverage
+coverage.txt
+coverage.html
+
+# Debug files
+*.log
+debug
+
+# OS specific
+Thumbs.db
+Desktop.ini
+
+# Temporary files
+*.tmp
+*.bak
+*.backup
+tmp/
+
+# Distribution archives
+*.tar.gz
+*.zip
+
+# Platform-specific builds
+cert-darwin-*
+cert-linux-*
+cert-windows-*

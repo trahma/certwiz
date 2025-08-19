@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(go mod:*)",
+      "Bash(go build:*)",
+      "Bash(go get:*)",
+      "Bash(go test:*)",
+      "Bash(make:*)",
+      "Bash(./cert:*)",
+      "Bash(chmod:*)",
+      "Bash(mkdir:*)",
+      "Bash(rm:*)",
+      "Bash(tree:*)",
+      "Bash(git init:*)",
+      "Bash(git add:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
