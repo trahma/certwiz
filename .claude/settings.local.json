@@ -23,7 +23,15 @@
       "Bash(./cert inspect:*)",
       "Bash(./cert generate:*)",
       "Bash(./cert verify:*)",
-      "Bash(./cert version)"
+      "Bash(./cert version)",
+      "Bash(git push:*)",
+      "Bash(git tag:*)",
+      "Bash(touch:*)",
+      "Bash(./install.sh:*)",
+      "Bash(curl:*)",
+      "Bash(tar:*)",
+      "Bash(ls:*)",
+      "Bash($HOME/.local/bin/cert:*)"
     ],
     "deny": [],
     "ask": [],

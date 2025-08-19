@@ -36,16 +36,48 @@ cert inspect github.com --chain
 
 ## 📦 Installation
 
-### Using Go
+### Quick Install (Recommended)
+
+Install the latest version with our installer script:
 
 ```bash
-go install github.com/certwiz/certwiz@latest
+curl -sSL https://raw.githubusercontent.com/trahma/certwiz/main/install.sh | bash
 ```
 
-### Build from Source
+Or install a specific version:
 
 ```bash
-git clone https://github.com/certwiz/certwiz
+curl -sSL https://raw.githubusercontent.com/trahma/certwiz/main/install.sh | bash -s -- --version v0.1.0
+```
+
+### Manual Installation
+
+Download pre-built binaries from the [releases page](https://github.com/trahma/certwiz/releases).
+
+#### macOS
+```bash
+# Apple Silicon (M1/M2/M3)
+curl -L https://github.com/trahma/certwiz/releases/latest/download/cert-darwin-arm64.tar.gz | tar xz
+sudo mv cert-darwin-arm64 /usr/local/bin/cert
+
+# Intel
+curl -L https://github.com/trahma/certwiz/releases/latest/download/cert-darwin-amd64.tar.gz | tar xz
+sudo mv cert-darwin-amd64 /usr/local/bin/cert
+```
+
+#### Linux
+```bash
+# 64-bit
+curl -L https://github.com/trahma/certwiz/releases/latest/download/cert-linux-amd64.tar.gz | tar xz
+sudo mv cert-linux-amd64 /usr/local/bin/cert
+```
+
+### From Source
+
+```bash
+go install github.com/trahma/certwiz@latest
+# or
+git clone https://github.com/trahma/certwiz
 cd certwiz
 make build
 ```
