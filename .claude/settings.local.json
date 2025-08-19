@@ -12,9 +12,23 @@
       "Bash(rm:*)",
       "Bash(tree:*)",
       "Bash(git init:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(./generate_test_certs.sh:*)",
+      "Bash(bash:*)",
+      "Bash(go test:*)",
+      "Bash(go tool cover:*)",
+      "Bash(./cert --version)",
+      "Bash(./cert help)",
+      "Bash(./cert inspect:*)",
+      "Bash(./cert generate:*)",
+      "Bash(./cert verify:*)",
+      "Bash(./cert version)"
     ],
     "deny": [],
-    "ask": []
+    "ask": [],
+    "additionalDirectories": [
+      "/private/tmp"
+    ]
   }
 }

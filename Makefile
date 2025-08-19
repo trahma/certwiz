@@ -4,7 +4,7 @@ BINARY_NAME=cert
 GO=go
 GOFLAGS=-v
 
-.PHONY: all build clean install test run help
+.PHONY: all build clean install test test-coverage test-coverage-html test-generate-certs run fmt vet help
 
 ## help: Display this help message
 help:
@@ -25,6 +25,7 @@ build:
 ## clean: Remove build artifacts
 clean:
 	rm -f $(BINARY_NAME)
+	rm -f coverage.out coverage.html
 	$(GO) clean
 
 ## install: Install the binary to GOPATH/bin
@@ -32,8 +33,33 @@ install:
 	$(GO) install $(GOFLAGS)
 
 ## test: Run tests
-test:
+test: test-generate-certs
 	$(GO) test -v ./...
+
+## test-coverage: Run tests with coverage
+test-coverage: test-generate-certs
+	@echo "Running tests with coverage..."
+	$(GO) test -v -coverprofile=coverage.out ./...
+	$(GO) tool cover -func=coverage.out
+
+## test-coverage-html: Generate HTML coverage report
+test-coverage-html: test-coverage
+	@echo "Generating HTML coverage report..."
+	$(GO) tool cover -html=coverage.out -o coverage.html
+	@echo "Coverage report generated at coverage.html"
+
+## test-generate-certs: Generate test certificates
+test-generate-certs:
+	@echo "Generating test certificates..."
+	@cd testdata && bash generate_test_certs.sh
+
+## fmt: Format Go code
+fmt:
+	$(GO) fmt ./...
+
+## vet: Run go vet
+vet:
+	$(GO) vet ./...
 
 ## run: Build and run the binary
 run: build

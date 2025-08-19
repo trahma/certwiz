@@ -7,6 +7,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var version = "0.1.0"
+
 var rootCmd = &cobra.Command{
 	Use:   "cert",
 	Short: "A user-friendly CLI tool for certificate management",
@@ -46,6 +48,15 @@ func init() {
 	rootCmd.AddCommand(generateCmd)
 	rootCmd.AddCommand(convertCmd)
 	rootCmd.AddCommand(verifyCmd)
+	rootCmd.AddCommand(versionCmd)
+}
+
+var versionCmd = &cobra.Command{
+	Use:   "version",
+	Short: "Print the version of cert",
+	Run: func(cmd *cobra.Command, args []string) {
+		fmt.Printf("cert version %s\n", version)
+	},
 }
 
 // checkError is a helper function to handle errors consistently

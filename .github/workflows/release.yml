@@ -1,0 +1,91 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build Release Binaries
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.21'
+    
+    - name: Get version
+      id: version
+      run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+    
+    - name: Build binaries
+      run: |
+        # Create release directory
+        mkdir -p release
+        
+        # Build for multiple platforms
+        GOOS=darwin GOARCH=amd64 go build -ldflags "-X main.version=${{ steps.version.outputs.VERSION }}" -o release/cert-darwin-amd64 .
+        GOOS=darwin GOARCH=arm64 go build -ldflags "-X main.version=${{ steps.version.outputs.VERSION }}" -o release/cert-darwin-arm64 .
+        GOOS=linux GOARCH=amd64 go build -ldflags "-X main.version=${{ steps.version.outputs.VERSION }}" -o release/cert-linux-amd64 .
+        GOOS=linux GOARCH=arm64 go build -ldflags "-X main.version=${{ steps.version.outputs.VERSION }}" -o release/cert-linux-arm64 .
+        GOOS=windows GOARCH=amd64 go build -ldflags "-X main.version=${{ steps.version.outputs.VERSION }}" -o release/cert-windows-amd64.exe .
+        
+        # Create archives
+        cd release
+        tar czf cert-darwin-amd64.tar.gz cert-darwin-amd64
+        tar czf cert-darwin-arm64.tar.gz cert-darwin-arm64
+        tar czf cert-linux-amd64.tar.gz cert-linux-amd64
+        tar czf cert-linux-arm64.tar.gz cert-linux-arm64
+        zip cert-windows-amd64.zip cert-windows-amd64.exe
+        
+        # Generate checksums
+        sha256sum *.tar.gz *.zip > checksums.txt
+    
+    - name: Create Release
+      uses: softprops/action-gh-release@v2
+      with:
+        name: Release ${{ steps.version.outputs.VERSION }}
+        draft: false
+        prerelease: false
+        files: |
+          release/*.tar.gz
+          release/*.zip
+          release/checksums.txt
+        body: |
+          ## What's Changed
+          
+          See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md) for details.
+          
+          ## Installation
+          
+          ### macOS (Apple Silicon)
+          ```bash
+          curl -L https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.VERSION }}/cert-darwin-arm64.tar.gz | tar xz
+          sudo mv cert-darwin-arm64 /usr/local/bin/cert
+          chmod +x /usr/local/bin/cert
+          ```
+          
+          ### macOS (Intel)
+          ```bash
+          curl -L https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.VERSION }}/cert-darwin-amd64.tar.gz | tar xz
+          sudo mv cert-darwin-amd64 /usr/local/bin/cert
+          chmod +x /usr/local/bin/cert
+          ```
+          
+          ### Linux (amd64)
+          ```bash
+          curl -L https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.VERSION }}/cert-linux-amd64.tar.gz | tar xz
+          sudo mv cert-linux-amd64 /usr/local/bin/cert
+          chmod +x /usr/local/bin/cert
+          ```
+          
+          ### Windows
+          Download and extract `cert-windows-amd64.zip`, then add to your PATH.
