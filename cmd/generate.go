@@ -32,11 +32,6 @@ Examples:
   certwiz generate --cn example.com --san *.example.com --san www.example.com
   certwiz generate --cn server --san IP:192.168.1.100 --san localhost`,
 	Run: func(cmd *cobra.Command, args []string) {
-		if generateCN == "" {
-			ui.ShowError("Common Name (--cn) is required")
-			os.Exit(1)
-		}
-
 		opts := cert.GenerateOptions{
 			CommonName: generateCN,
 			Days:       generateDays,
@@ -71,7 +66,7 @@ func init() {
 	generateCmd.Flags().StringVar(&generateCN, "cn", "", "Common Name for the certificate (required)")
 	generateCmd.Flags().IntVar(&generateDays, "days", 365, "Validity period in days")
 	generateCmd.Flags().IntVar(&generateKeySize, "key-size", 2048, "RSA key size in bits")
-	generateCmd.Flags().StringArrayVar(&generateSANs, "san", []string{}, "Subject Alternative Name (can be used multiple times)")
+	generateCmd.Flags().StringSliceVar(&generateSANs, "san", []string{}, "Subject Alternative Name (can be used multiple times)")
 	generateCmd.Flags().StringVar(&generateOutput, "output", ".", "Output directory")
 	
 	generateCmd.MarkFlagRequired("cn")

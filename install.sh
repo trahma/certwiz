@@ -12,28 +12,163 @@ REPO_NAME="certwiz"
 BINARY_NAME="cert"
 INSTALL_DIR="${INSTALL_DIR:-/usr/local/bin}"
 
-# Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+# Colors for output (only if terminal supports it)
+if [ -t 1 ] && [ "${TERM}" != "dumb" ]; then
+    RED='\033[0;31m'
+    GREEN='\033[0;32m'
+    YELLOW='\033[1;33m'
+    BLUE='\033[0;34m'
+    NC='\033[0m' # No Color
+else
+    RED=''
+    GREEN=''
+    YELLOW=''
+    BLUE=''
+    NC=''
+fi
 
-# Helper functions
+# Helper functions - use printf for better portability
 info() {
-    echo -e "${BLUE}[INFO]${NC} $1"
+    printf "${BLUE}[INFO]${NC} %s\n" "$1" >&2
 }
 
 success() {
-    echo -e "${GREEN}[SUCCESS]${NC} $1"
+    printf "${GREEN}[SUCCESS]${NC} %s\n" "$1" >&2
 }
 
 error() {
-    echo -e "${RED}[ERROR]${NC} $1" >&2
+    printf "${RED}[ERROR]${NC} %s\n" "$1" >&2
 }
 
 warning() {
-    echo -e "${YELLOW}[WARNING]${NC} $1"
+    printf "${YELLOW}[WARNING]${NC} %s\n" "$1" >&2
+}
+
+prompt() {
+    printf "${YELLOW}[?]${NC} %s" "$1" >&2
+}
+
+# Get writable directories from PATH
+get_writable_path_dirs() {
+    local oldIFS="$IFS"
+    local dir
+    
+    # Split PATH on ':' and check each directory
+    IFS=':'
+    for dir in $PATH; do
+        # Skip empty entries
+        [ -z "$dir" ] && continue
+        
+        # Expand ~ to home directory if present
+        case "$dir" in
+            "~"*) dir="$HOME${dir#~}" ;;
+        esac
+        
+        # Check if directory exists and is writable
+        if [ -d "$dir" ] && [ -w "$dir" ]; then
+            printf '%s\n' "$dir"
+        fi
+    done
+    
+    IFS="$oldIFS"
+}
+
+# Choose installation directory interactively
+choose_install_dir() {
+    local writable_dirs_list
+    local default_dir="${INSTALL_DIR}"
+    
+    info "Detecting writable directories in your PATH..."
+    
+    # Get writable directories from PATH
+    writable_dirs_list="$(get_writable_path_dirs)"
+    
+    printf "\n${BLUE}[INSTALL]${NC} Choose installation directory:\n" >&2
+    
+    # Check common user directories
+    local option_num=1
+    local user_local="$HOME/.local/bin"
+    local user_bin="$HOME/bin"
+    local usr_local="/usr/local/bin"
+    
+    # Option 1: ~/.local/bin (preferred user directory)
+    if echo "$writable_dirs_list" | grep -q "^$user_local$"; then
+        printf "  %d) %s ${GREEN}(writable)${NC}\n" $option_num "$user_local" >&2
+    elif [ -d "$user_local" ]; then
+        printf "  %d) %s ${YELLOW}(exists but not writable)${NC}\n" $option_num "$user_local" >&2
+    else
+        printf "  %d) %s ${YELLOW}(will be created)${NC}\n" $option_num "$user_local" >&2
+    fi
+    option_num=$((option_num + 1))
+    
+    # Option 2: ~/bin
+    if echo "$writable_dirs_list" | grep -q "^$user_bin$"; then
+        printf "  %d) %s ${GREEN}(writable)${NC}\n" $option_num "$user_bin" >&2
+    elif [ -d "$user_bin" ]; then
+        printf "  %d) %s ${YELLOW}(exists but not writable)${NC}\n" $option_num "$user_bin" >&2
+    else
+        printf "  %d) %s ${YELLOW}(will be created)${NC}\n" $option_num "$user_bin" >&2
+    fi
+    option_num=$((option_num + 1))
+    
+    # Option 3: /usr/local/bin (system directory)
+    if echo "$writable_dirs_list" | grep -q "^$usr_local$"; then
+        printf "  %d) %s ${GREEN}(writable)${NC}\n" $option_num "$usr_local" >&2
+    elif [ -d "$usr_local" ]; then
+        printf "  %d) %s ${YELLOW}(requires sudo)${NC}\n" $option_num "$usr_local" >&2
+    else
+        printf "  %d) %s ${YELLOW}(will be created with sudo)${NC}\n" $option_num "$usr_local" >&2
+    fi
+    option_num=$((option_num + 1))
+    
+    # Option 4: Custom directory
+    printf "  c) Custom directory\n" >&2
+    printf "\n" >&2
+    
+    # Get user choice
+    while true; do
+        prompt "Select option [1-3, c]: "
+        read -r choice
+        
+        case "$choice" in
+            1)
+                INSTALL_DIR="$user_local"
+                break
+                ;;
+            2)
+                INSTALL_DIR="$user_bin"
+                break
+                ;;
+            3)
+                INSTALL_DIR="$usr_local"
+                break
+                ;;
+            c|C)
+                printf "\n" >&2
+                prompt "Enter custom directory path: "
+                read -r custom_dir
+                
+                # Expand ~ to home directory if present
+                case "$custom_dir" in
+                    "~"*) custom_dir="$HOME${custom_dir#~}" ;;
+                esac
+                
+                if [ -n "$custom_dir" ]; then
+                    INSTALL_DIR="$custom_dir"
+                    break
+                else
+                    warning "Please enter a valid directory path."
+                fi
+                ;;
+            *)
+                warning "Please enter a valid option (1-3 or c)."
+                ;;
+        esac
+    done
+    
+    printf "\n" >&2
+    info "Installing to: $INSTALL_DIR"
+    printf "\n" >&2
 }
 
 # Detect OS
@@ -105,11 +240,11 @@ download_binary() {
     local archive_name="${binary_name}.tar.gz"
     local download_url="https://github.com/${REPO_OWNER}/${REPO_NAME}/releases/download/${version}/${archive_name}"
     
-    info "Downloading ${BINARY_NAME} ${version} for ${os}/${arch}..."
-    info "URL: ${download_url}"
+    info "Downloading ${BINARY_NAME} ${version} for ${os}/${arch}..." >&2
+    info "URL: ${download_url}" >&2
     
     # Download the archive
-    if ! curl -L --fail --progress-bar -o "${temp_dir}/${archive_name}" "${download_url}"; then
+    if ! curl -L --fail --progress-bar -o "${temp_dir}/${archive_name}" "${download_url}" 2>&1; then
         error "Failed to download binary"
         error "Please check if the release exists for your platform: ${os}/${arch}"
         rm -rf "${temp_dir}"
@@ -117,8 +252,8 @@ download_binary() {
     fi
     
     # Extract the archive
-    info "Extracting archive..."
-    if ! tar -xzf "${temp_dir}/${archive_name}" -C "${temp_dir}"; then
+    info "Extracting archive..." >&2
+    if ! tar -xzf "${temp_dir}/${archive_name}" -C "${temp_dir}" 2>&1; then
         error "Failed to extract archive"
         rm -rf "${temp_dir}"
         exit 1
@@ -233,6 +368,13 @@ main() {
         success "Latest version: ${VERSION}"
     fi
     
+    # Choose installation directory (unless explicitly set via --install-dir)
+    if [[ -n "${FORCE_INTERACTIVE}" ]] || ([[ "${INSTALL_DIR}" == "/usr/local/bin" ]] && [[ -z "${INSTALL_DIR_SET}" ]]); then
+        choose_install_dir
+    else
+        info "Installing to: ${INSTALL_DIR}"
+    fi
+    
     # Download binary
     BINARY_PATH="$(download_binary "${VERSION}" "${OS}" "${ARCH}")"
     success "Download complete!"
@@ -265,7 +407,12 @@ while [[ $# -gt 0 ]]; do
             ;;
         --install-dir)
             INSTALL_DIR="$2"
+            INSTALL_DIR_SET="1"
             shift 2
+            ;;
+        --interactive)
+            FORCE_INTERACTIVE="1"
+            shift
             ;;
         --help)
             echo "CertWiz Installer"
@@ -274,7 +421,8 @@ while [[ $# -gt 0 ]]; do
             echo ""
             echo "Options:"
             echo "  --version VERSION     Install specific version (default: latest)"
-            echo "  --install-dir DIR     Installation directory (default: /usr/local/bin)"
+            echo "  --install-dir DIR     Installation directory (default: interactive selection)"
+            echo "  --interactive         Force interactive directory selection"
             echo "  --help               Show this help message"
             echo ""
             echo "Environment Variables:"
@@ -282,14 +430,17 @@ while [[ $# -gt 0 ]]; do
             echo "  VERSION              Alternative to --version flag"
             echo ""
             echo "Examples:"
-            echo "  # Install latest version"
+            echo "  # Install latest version (interactive directory selection)"
             echo "  curl -sSL https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/main/install.sh | bash"
             echo ""
             echo "  # Install specific version"
             echo "  curl -sSL https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/main/install.sh | bash -s -- --version v0.1.0"
             echo ""
-            echo "  # Install to custom directory"
+            echo "  # Install to specific directory (non-interactive)"
             echo "  curl -sSL https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/main/install.sh | bash -s -- --install-dir \$HOME/.local/bin"
+            echo ""
+            echo "  # Force interactive mode even with INSTALL_DIR set"
+            echo "  INSTALL_DIR=/usr/bin curl -sSL https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/main/install.sh | bash -s -- --interactive"
             exit 0
             ;;
         *)
