@@ -38,7 +38,7 @@ func TestJSONOutput(t *testing.T) {
 		w.Close()
 		os.Stdout = old
 		var buf bytes.Buffer
-		io.Copy(&buf, r)
+		_, _ = io.Copy(&buf, r)
 
 		// Parse JSON output
 		var result map[string]interface{}
@@ -87,7 +87,7 @@ func TestJSONOutput(t *testing.T) {
 		w.Close()
 		os.Stdout = old
 		var buf bytes.Buffer
-		io.Copy(&buf, r)
+		_, _ = io.Copy(&buf, r)
 
 		// Parse JSON output
 		var cert map[string]interface{}
@@ -141,7 +141,7 @@ func TestJSONOutput(t *testing.T) {
 		w.Close()
 		os.Stdout = old
 		var buf bytes.Buffer
-		io.Copy(&buf, r)
+		_, _ = io.Copy(&buf, r)
 
 		// Parse JSON output
 		var result map[string]interface{}
