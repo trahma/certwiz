@@ -57,8 +57,8 @@ func TestGenerateCommand(t *testing.T) {
 			// Create temporary directory for test outputs
 			tempDir := t.TempDir()
 			oldDir, _ := os.Getwd()
-			os.Chdir(tempDir)
-			defer os.Chdir(oldDir)
+			_ = os.Chdir(tempDir)
+			defer func() { _ = os.Chdir(oldDir) }()
 
 			// Reset flags to ensure clean state
 			generateCN = ""
@@ -68,7 +68,7 @@ func TestGenerateCommand(t *testing.T) {
 			generateOutput = "."
 
 			// Reset the generateCmd flags
-			generateCmd.Flags().Set("cn", "")
+			_ = generateCmd.Flags().Set("cn", "")
 
 			// Create new root command for each test
 			cmd := rootCmd

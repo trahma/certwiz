@@ -41,7 +41,7 @@ Examples:
 			fmt.Printf("cert version %s\n", version)
 			return
 		}
-		cmd.Help()
+		_ = cmd.Help()
 	},
 }
 

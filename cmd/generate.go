@@ -74,5 +74,5 @@ func init() {
 	generateCmd.Flags().StringSliceVar(&generateSANs, "san", []string{}, "Subject Alternative Name (can be used multiple times)")
 	generateCmd.Flags().StringVar(&generateOutput, "output", ".", "Output directory")
 
-	generateCmd.MarkFlagRequired("cn")
+	_ = generateCmd.MarkFlagRequired("cn")
 }

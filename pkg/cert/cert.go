@@ -86,7 +86,7 @@ func InspectURLWithChain(targetURL string, port int) (*Certificate, []*Certifica
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to connect: %w", err)
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	// Get the peer certificates
 	certs := conn.ConnectionState().PeerCertificates
@@ -175,7 +175,7 @@ func Generate(opts GenerateOptions) error {
 	if err != nil {
 		return fmt.Errorf("failed to create cert file: %w", err)
 	}
-	defer certFile.Close()
+	defer func() { _ = certFile.Close() }()
 
 	if err := pem.Encode(certFile, &pem.Block{
 		Type:  "CERTIFICATE",
@@ -190,7 +190,7 @@ func Generate(opts GenerateOptions) error {
 	if err != nil {
 		return fmt.Errorf("failed to create key file: %w", err)
 	}
-	defer keyFile.Close()
+	defer func() { _ = keyFile.Close() }()
 
 	privateKeyBytes, err := x509.MarshalPKCS8PrivateKey(privateKey)
 	if err != nil {
@@ -256,17 +256,17 @@ func Verify(certPath, caPath, hostname string) (*VerificationResult, error) {
 
 	// Check expiration
 	now := time.Now()
-	if cert.Certificate.NotBefore.After(now) {
+	if cert.NotBefore.After(now) {
 		result.IsValid = false
 		result.Errors = append(result.Errors, "Certificate is not yet valid")
-	} else if cert.Certificate.NotAfter.Before(now) {
+	} else if cert.NotAfter.Before(now) {
 		result.IsValid = false
 		result.Errors = append(result.Errors, "Certificate has expired")
 	}
 
 	// Check hostname if provided
 	if hostname != "" {
-		if err := cert.Certificate.VerifyHostname(hostname); err != nil {
+		if err := cert.VerifyHostname(hostname); err != nil {
 			result.IsValid = false
 			result.Errors = append(result.Errors, fmt.Sprintf("Hostname verification failed: %v", err))
 		}

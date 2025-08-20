@@ -28,11 +28,11 @@ func captureOutput(f func()) string {
 
 	f()
 
-	w.Close()
+	_ = w.Close()
 	os.Stdout = old
 
 	var buf bytes.Buffer
-	io.Copy(&buf, r)
+	_, _ = io.Copy(&buf, r)
 	return buf.String()
 }
 
@@ -620,7 +620,7 @@ func parseOID(oid string) []int {
 	parts := strings.Split(oid, ".")
 	result := make([]int, len(parts))
 	for i, part := range parts {
-		fmt.Sscanf(part, "%d", &result[i])
+		_, _ = fmt.Sscanf(part, "%d", &result[i])
 	}
 	return result
 }

@@ -26,8 +26,8 @@ func TestInspectFile(t *testing.T) {
 				if cert.Format != "PEM" {
 					t.Errorf("Expected format PEM, got %s", cert.Format)
 				}
-				if cert.Certificate.Subject.CommonName != "test.example.com" {
-					t.Errorf("Expected CN test.example.com, got %s", cert.Certificate.Subject.CommonName)
+				if cert.Subject.CommonName != "test.example.com" {
+					t.Errorf("Expected CN test.example.com, got %s", cert.Subject.CommonName)
 				}
 				if cert.IsExpired {
 					t.Error("Certificate should not be expired")
@@ -69,7 +69,7 @@ func TestInspectFile(t *testing.T) {
 				}
 				for _, san := range expectedSANs {
 					found := false
-					for _, dns := range cert.Certificate.DNSNames {
+					for _, dns := range cert.DNSNames {
 						if dns == san {
 							found = true
 							break
@@ -79,8 +79,8 @@ func TestInspectFile(t *testing.T) {
 						t.Errorf("Expected SAN %s not found", san)
 					}
 				}
-				if len(cert.Certificate.IPAddresses) != 2 {
-					t.Errorf("Expected 2 IP addresses, got %d", len(cert.Certificate.IPAddresses))
+				if len(cert.IPAddresses) != 2 {
+					t.Errorf("Expected 2 IP addresses, got %d", len(cert.IPAddresses))
 				}
 			},
 		},
@@ -230,8 +230,8 @@ func TestGenerate(t *testing.T) {
 				t.Fatalf("Failed to inspect generated certificate: %v", err)
 			}
 
-			if cert.Certificate.Subject.CommonName != tt.opts.CommonName {
-				t.Errorf("Expected CN %s, got %s", tt.opts.CommonName, cert.Certificate.Subject.CommonName)
+			if cert.Subject.CommonName != tt.opts.CommonName {
+				t.Errorf("Expected CN %s, got %s", tt.opts.CommonName, cert.Subject.CommonName)
 			}
 
 			// Check SANs
@@ -239,7 +239,7 @@ func TestGenerate(t *testing.T) {
 				for _, san := range tt.opts.SANs {
 					if san == "IP:127.0.0.1" {
 						found := false
-						for _, ip := range cert.Certificate.IPAddresses {
+						for _, ip := range cert.IPAddresses {
 							if ip.Equal(net.ParseIP("127.0.0.1")) {
 								found = true
 								break
@@ -250,7 +250,7 @@ func TestGenerate(t *testing.T) {
 						}
 					} else {
 						found := false
-						for _, dns := range cert.Certificate.DNSNames {
+						for _, dns := range cert.DNSNames {
 							if dns == san {
 								found = true
 								break
@@ -330,11 +330,14 @@ func TestConvert(t *testing.T) {
 				t.Fatalf("Failed to inspect converted certificate: %v", err)
 			}
 
-			expectedFormat := tt.format
-			if expectedFormat == "der" {
+			var expectedFormat string
+			switch tt.format {
+			case "der":
 				expectedFormat = "DER"
-			} else if expectedFormat == "pem" {
+			case "pem":
 				expectedFormat = "PEM"
+			default:
+				expectedFormat = tt.format
 			}
 
 			if cert.Format != expectedFormat {
@@ -507,9 +510,9 @@ func TestGenerateOptionsDefaults(t *testing.T) {
 
 	// Certificate should be valid for the specified days
 	expectedExpiry := time.Now().Add(time.Duration(opts.Days) * 24 * time.Hour)
-	diff := cert.Certificate.NotAfter.Sub(expectedExpiry)
+	diff := cert.NotAfter.Sub(expectedExpiry)
 	if diff < -24*time.Hour || diff > 24*time.Hour {
-		t.Errorf("Certificate expiry not as expected: %v", cert.Certificate.NotAfter)
+		t.Errorf("Certificate expiry not as expected: %v", cert.NotAfter)
 	}
 }
 

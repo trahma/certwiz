@@ -45,7 +45,8 @@
       "WebFetch(domain:github.com)",
       "Bash(/usr/local/go/bin/go:*)",
       "Bash(/usr/bin/go:*)",
-      "Bash(sed:*)"
+      "Bash(sed:*)",
+      "Bash(mv:*)"
     ],
     "deny": [],
     "ask": [],
