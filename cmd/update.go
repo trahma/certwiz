@@ -2,10 +2,14 @@ package cmd
 
 import (
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 	"strings"
+	"syscall"
 
 	"github.com/spf13/cobra"
 )
@@ -39,30 +43,81 @@ This command will:
 		// Download and run the installer script
 		fmt.Println("\nFetching latest version information...")
 
-		// Use bash to download and execute the installer
+		// Download the installer script to a temp file
 		installerURL := "https://raw.githubusercontent.com/trahma/certwiz/main/install.sh"
-
-		// Prepare the bash command
-		var bashCmd *exec.Cmd
-		if forceUpdate {
-			// Force reinstall even if version is the same
-			bashCmd = exec.Command("bash", "-c",
-				fmt.Sprintf("curl -sSL %s | bash -s -- --force", installerURL))
-		} else {
-			// Normal update - will check version and only update if newer
-			bashCmd = exec.Command("bash", "-c",
-				fmt.Sprintf("curl -sSL %s | bash", installerURL))
-		}
-
-		// Connect stdin, stdout, stderr so user can interact if needed
-		bashCmd.Stdin = os.Stdin
-		bashCmd.Stdout = os.Stdout
-		bashCmd.Stderr = os.Stderr
-
-		// Run the installer
-		if err := bashCmd.Run(); err != nil {
-			fmt.Fprintf(os.Stderr, "Error running update: %v\n", err)
+		
+		// Create temp file for installer script
+		tempDir := os.TempDir()
+		installerPath := filepath.Join(tempDir, "certwiz-installer.sh")
+		
+		// Download the installer
+		fmt.Println("Downloading installer...")
+		resp, err := http.Get(installerURL)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error downloading installer: %v\n", err)
 			os.Exit(1)
+		}
+		defer resp.Body.Close()
+		
+		// Create the installer file
+		installerFile, err := os.Create(installerPath)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error creating installer file: %v\n", err)
+			os.Exit(1)
+		}
+		
+		// Write the installer content
+		_, err = io.Copy(installerFile, resp.Body)
+		installerFile.Close()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error writing installer: %v\n", err)
+			os.Exit(1)
+		}
+		
+		// Make installer executable
+		if err := os.Chmod(installerPath, 0755); err != nil {
+			fmt.Fprintf(os.Stderr, "Error making installer executable: %v\n", err)
+			os.Exit(1)
+		}
+		
+		// Clear extended attributes on macOS
+		if runtime.GOOS == "darwin" {
+			xattrCmd := exec.Command("xattr", "-cr", installerPath)
+			_ = xattrCmd.Run() // Ignore errors, xattr might not be available
+		}
+		
+		// Prepare arguments for the installer
+		installerArgs := []string{installerPath}
+		if forceUpdate {
+			installerArgs = append(installerArgs, "--force")
+		}
+		
+		fmt.Println("Running installer...")
+		
+		// Use syscall.Exec to replace the current process with the installer
+		// This breaks the inheritance chain that might be causing issues
+		env := os.Environ()
+		
+		// Find bash executable
+		bashPath, err := exec.LookPath("bash")
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error finding bash: %v\n", err)
+			os.Exit(1)
+		}
+		
+		// Replace current process with bash running the installer
+		// This ensures the installer runs in a clean context
+		if err := syscall.Exec(bashPath, installerArgs, env); err != nil {
+			fmt.Fprintf(os.Stderr, "Error executing installer: %v\n", err)
+			// Fallback to regular exec if syscall.Exec fails
+			cmd := exec.Command("bash", installerArgs...)
+			cmd.Stdin = os.Stdin
+			cmd.Stdout = os.Stdout
+			cmd.Stderr = os.Stderr
+			if err := cmd.Run(); err != nil {
+				fmt.Fprintf(os.Stderr, "Error running installer: %v\n", err)
+				os.Exit(1)
+			}
 		}
 	},
 }
