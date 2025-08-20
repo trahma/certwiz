@@ -304,26 +304,27 @@ download_binary() {
     fi
     
     # Find the binary - it could be named "cert", "cert.exe", or "cert-OS-ARCH"
-    local binary_path="${temp_dir}/${BINARY_NAME}"
-    if [[ "${os}" == "windows" ]]; then
-        binary_path="${temp_dir}/${BINARY_NAME}.exe"
-    fi
+    local binary_path=""
     
-    # Check for various naming conventions
-    if [[ ! -f "${binary_path}" ]]; then
-        # Try with OS-ARCH suffix
+    # First try with OS-ARCH suffix (most common in releases)
+    if [[ -f "${temp_dir}/${binary_name}" ]]; then
         binary_path="${temp_dir}/${binary_name}"
-        if [[ ! -f "${binary_path}" ]]; then
-            # Try finding any executable named cert*
-            binary_path=$(find "${temp_dir}" -name "cert*" -type f -perm +111 | head -1)
-            if [[ -z "${binary_path}" ]] || [[ ! -f "${binary_path}" ]]; then
-                # List what's in the temp dir for debugging
-                info "Looking for binary in: ${temp_dir}"
-                ls -la "${temp_dir}" >&2
-                error "Binary not found in archive"
-                rm -rf "${temp_dir}"
-                exit 1
-            fi
+    # Then try just the binary name
+    elif [[ -f "${temp_dir}/${BINARY_NAME}" ]]; then
+        binary_path="${temp_dir}/${BINARY_NAME}"
+    # Windows exe
+    elif [[ -f "${temp_dir}/${BINARY_NAME}.exe" ]]; then
+        binary_path="${temp_dir}/${BINARY_NAME}.exe"
+    # Fallback: find any file starting with cert
+    else
+        binary_path=$(find "${temp_dir}" -name "cert*" -type f | head -1)
+        if [[ -z "${binary_path}" ]] || [[ ! -f "${binary_path}" ]]; then
+            # List what's in the temp dir for debugging
+            info "Looking for binary in: ${temp_dir}"
+            ls -la "${temp_dir}" >&2
+            error "Binary not found in archive"
+            rm -rf "${temp_dir}"
+            exit 1
         fi
     fi
     
