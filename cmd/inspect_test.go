@@ -8,7 +8,7 @@ import (
 
 // testdataPath returns the path to a file in the testdata directory
 func testdataPath(filename string) string {
-	return filepath.Join("..", "..", "testdata", filename)
+	return filepath.Join("..", "testdata", filename)
 }
 
 func TestInspectCommand(t *testing.T) {
