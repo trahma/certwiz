@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Removed duplicate release workflow (now using only goreleaser)
 - Enhanced installer script with self-update detection
+- Simplified default command output (run without arguments) - examples now only shown with `cert help`
 
 ## [0.1.7] - 2025-08-20
 

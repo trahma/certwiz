@@ -68,7 +68,9 @@
       "Bash(gh run view:*)",
       "Bash(git pull:*)",
       "WebSearch",
-      "WebFetch(domain:gist.github.com)"
+      "WebFetch(domain:gist.github.com)",
+      "Bash(/tmp/test-cert)",
+      "Bash(/tmp/test-cert:*)"
     ],
     "deny": [],
     "ask": [],

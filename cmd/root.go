@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/spf13/cobra"
 )
@@ -17,10 +18,8 @@ var rootCmd = &cobra.Command{
 	Use:   "cert",
 	Short: "A user-friendly CLI tool for certificate management",
 	Long: `cert (from certwiz) is a user-friendly CLI tool for certificate management.
-Similar to HTTPie but for certificates.
-
-Examples:
-  # Inspect a certificate file
+Similar to HTTPie but for certificates.`,
+	Example: `  # Inspect a certificate file
   cert inspect cert.pem
   cert inspect cert.der --full
   
@@ -44,6 +43,44 @@ Examples:
 			fmt.Printf("cert version %s\n", version)
 			return
 		}
+		
+		// Check if help was explicitly requested
+		helpRequested := false
+		for _, arg := range os.Args[1:] {
+			if arg == "help" || arg == "--help" || arg == "-h" {
+				helpRequested = true
+				break
+			}
+		}
+		
+		// If running without arguments (no help requested), show simplified output
+		if !helpRequested && len(os.Args) == 1 {
+			// Show simplified usage without examples
+			fmt.Println("cert (from certwiz) - A user-friendly CLI tool for certificate management")
+			fmt.Println("\nUsage:")
+			fmt.Println("  cert [command]")
+			fmt.Println("\nAvailable Commands:")
+			fmt.Println("  ca          Create a Certificate Authority (CA) certificate")
+			fmt.Println("  completion  Generate the autocompletion script for the specified shell")
+			fmt.Println("  convert     Convert certificates between different formats")
+			fmt.Println("  csr         Generate a Certificate Signing Request (CSR)")
+			fmt.Println("  generate    Generate a self-signed certificate")
+			fmt.Println("  help        Help about any command")
+			fmt.Println("  inspect     Inspect a certificate from a file or URL")
+			fmt.Println("  sign        Sign a Certificate Signing Request (CSR) with a CA")
+			fmt.Println("  update      Update cert to the latest version")
+			fmt.Println("  verify      Verify a certificate")
+			fmt.Println("  version     Print the version of cert")
+			fmt.Println("\nFlags:")
+			fmt.Println("  -h, --help      help for cert")
+			fmt.Println("      --json      Output in JSON format")
+			fmt.Println("  -v, --version   Print version information")
+			fmt.Println("\nUse \"cert [command] --help\" for more information about a command.")
+			fmt.Println("Use \"cert help\" to see examples.")
+			return
+		}
+		
+		// Otherwise show full help with examples
 		_ = cmd.Help()
 	},
 }
