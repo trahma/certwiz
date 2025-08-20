@@ -26,9 +26,9 @@ const (
 // Certificate represents a parsed X.509 certificate with additional metadata
 type Certificate struct {
 	*x509.Certificate
-	Source     string // file path or URL
-	Format     string // PEM or DER
-	IsExpired  bool
+	Source          string // file path or URL
+	Format          string // PEM or DER
+	IsExpired       bool
 	DaysUntilExpiry int
 }
 
@@ -65,12 +65,12 @@ func InspectURLWithChain(targetURL string, port int) (*Certificate, []*Certifica
 	if !strings.Contains(targetURL, "://") {
 		targetURL = "https://" + targetURL
 	}
-	
+
 	u, err := url.Parse(targetURL)
 	if err != nil {
 		return nil, nil, fmt.Errorf("invalid URL: %w", err)
 	}
-	
+
 	host := u.Hostname()
 	if u.Port() != "" {
 		host = net.JoinHostPort(u.Hostname(), u.Port())
@@ -220,7 +220,7 @@ func Convert(inputPath, outputPath, format string) error {
 	}
 
 	var output []byte
-	
+
 	switch strings.ToLower(format) {
 	case "pem":
 		output = pem.EncodeToMemory(&pem.Block{
@@ -290,7 +290,7 @@ func parseCertificate(data []byte) (*x509.Certificate, string, error) {
 	if err != nil {
 		return nil, "", fmt.Errorf("failed to parse as PEM or DER: %w", err)
 	}
-	
+
 	return cert, FormatDER, nil
 }
 

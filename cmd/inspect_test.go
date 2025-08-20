@@ -7,10 +7,10 @@ import (
 
 func TestInspectCommand(t *testing.T) {
 	tests := []struct {
-		name           string
-		args           []string
-		wantErr        bool
-		expectedOutput []string
+		name             string
+		args             []string
+		wantErr          bool
+		expectedOutput   []string
 		unexpectedOutput []string
 	}{
 		{

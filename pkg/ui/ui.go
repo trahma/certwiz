@@ -17,47 +17,46 @@ import (
 
 var (
 	// Color palette
-	green   = lipgloss.Color("#00ff00")
-	red     = lipgloss.Color("#ff0000")
-	yellow  = lipgloss.Color("#ffff00")
-	cyan    = lipgloss.Color("#00ffff")
-	blue    = lipgloss.Color("#0066cc")
-	white   = lipgloss.Color("#ffffff")
+	green  = lipgloss.Color("#00ff00")
+	red    = lipgloss.Color("#ff0000")
+	yellow = lipgloss.Color("#ffff00")
+	cyan   = lipgloss.Color("#00ffff")
+	blue   = lipgloss.Color("#0066cc")
+	white  = lipgloss.Color("#ffffff")
 
 	// Styles
 	titleStyle = lipgloss.NewStyle().
-		Foreground(cyan).
-		Bold(true).
-		Padding(0, 1)
+			Foreground(cyan).
+			Bold(true).
+			Padding(0, 1)
 
 	headerStyle = lipgloss.NewStyle().
-		Foreground(blue).
-		Bold(true)
+			Foreground(blue).
+			Bold(true)
 
 	successStyle = lipgloss.NewStyle().
-		Foreground(green).
-		Bold(true)
+			Foreground(green).
+			Bold(true)
 
 	errorStyle = lipgloss.NewStyle().
-		Foreground(red).
-		Bold(true)
+			Foreground(red).
+			Bold(true)
 
 	warningStyle = lipgloss.NewStyle().
-		Foreground(yellow).
-		Bold(true)
+			Foreground(yellow).
+			Bold(true)
 
 	keyStyle = lipgloss.NewStyle().
-		Foreground(cyan).
-		Bold(false)
+			Foreground(cyan).
+			Bold(false)
 
 	valueStyle = lipgloss.NewStyle().
-		Foreground(white)
+			Foreground(white)
 
 	panelStyle = lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(cyan).
-		Padding(1, 2)
-
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(cyan).
+			Padding(1, 2)
 )
 
 // DisplayCertificate shows certificate information in a formatted table
@@ -93,7 +92,7 @@ func DisplayCertificate(cert *cert.Certificate, showFull bool) {
 		for _, ip := range cert.IPAddresses {
 			sans = append(sans, ip.String())
 		}
-		
+
 		// Format SANs with word wrapping
 		sanText := formatSANs(sans)
 		// Add count in parentheses if there are many SANs
@@ -105,7 +104,7 @@ func DisplayCertificate(cert *cert.Certificate, showFull bool) {
 
 	// Display table
 	content := formatTable(table)
-	
+
 	var borderColor lipgloss.Color
 	if cert.IsExpired {
 		borderColor = red
@@ -120,7 +119,7 @@ func DisplayCertificate(cert *cert.Certificate, showFull bool) {
 	if err != nil || width <= 0 {
 		width = 80 // default fallback
 	}
-	
+
 	// Constrain panel to terminal width
 	// The panel adds borders and padding, so we need to account for that
 	panel := panelStyle.Copy().
@@ -137,12 +136,12 @@ func DisplayCertificate(cert *cert.Certificate, showFull bool) {
 func DisplayGenerationResult(certPath, keyPath string) {
 	fmt.Println(successStyle.Render("✓ Certificate generated successfully!"))
 	fmt.Println()
-	
+
 	table := [][]string{
 		{"Certificate", certPath},
 		{"Private Key", keyPath},
 	}
-	
+
 	content := formatTable(table)
 	fmt.Println(panelStyle.Render(content))
 }
@@ -151,12 +150,12 @@ func DisplayGenerationResult(certPath, keyPath string) {
 func DisplayConversionResult(inputPath, outputPath, fromFormat, toFormat string) {
 	fmt.Println(successStyle.Render(fmt.Sprintf("✓ Converted from %s to %s", strings.ToUpper(fromFormat), strings.ToUpper(toFormat))))
 	fmt.Println()
-	
+
 	table := [][]string{
 		{"Input", inputPath},
 		{"Output", outputPath},
 	}
-	
+
 	content := formatTable(table)
 	fmt.Println(panelStyle.Render(content))
 }
@@ -198,7 +197,7 @@ func DisplayVerificationResult(result *cert.VerificationResult) {
 	cert := result.Certificate.Certificate
 
 	checks := [][]string{}
-	
+
 	// Date checks
 	if cert.NotBefore.After(now) {
 		checks = append(checks, []string{"✗", "Not yet valid", errorStyle.Render("FAIL")})
@@ -234,7 +233,7 @@ func ShowInfo(message string) {
 // formatTable creates a formatted table from key-value pairs
 func formatTable(data [][]string) string {
 	var result strings.Builder
-	
+
 	// Find the maximum key length for alignment
 	maxKeyLen := 0
 	for _, row := range data {
@@ -242,14 +241,14 @@ func formatTable(data [][]string) string {
 			maxKeyLen = len(row[0])
 		}
 	}
-	
+
 	for _, row := range data {
 		key := fmt.Sprintf("%-*s", maxKeyLen, row[0])
-		result.WriteString(fmt.Sprintf("%s: %s\n", 
-			keyStyle.Render(key), 
+		result.WriteString(fmt.Sprintf("%s: %s\n",
+			keyStyle.Render(key),
 			valueStyle.Render(row[1])))
 	}
-	
+
 	return strings.TrimSuffix(result.String(), "\n")
 }
 
@@ -268,11 +267,11 @@ func formatSubject(subject pkix.Name) string {
 	if len(subject.Country) > 0 {
 		parts = append(parts, fmt.Sprintf("C=%s", strings.Join(subject.Country, ", ")))
 	}
-	
+
 	if len(parts) == 0 {
 		return "Unknown"
 	}
-	
+
 	return strings.Join(parts, ", ")
 }
 
@@ -280,13 +279,13 @@ func formatSubject(subject pkix.Name) string {
 func formatDate(t time.Time) string {
 	formatted := t.Format("2006-01-02 15:04:05 UTC")
 	now := time.Now()
-	
+
 	if t.Before(now) && t.After(now.AddDate(0, 0, -1)) {
 		return warningStyle.Render(formatted)
 	} else if t.After(now) {
 		return successStyle.Render(formatted)
 	}
-	
+
 	return formatted
 }
 
@@ -320,7 +319,7 @@ func formatSANs(sans []string) string {
 	if err != nil || width <= 0 {
 		width = 80 // default fallback
 	}
-	
+
 	// Calculate actual available width for SANs value
 	// Looking at the actual rendering and your screenshot:
 	// - Box has "│" on both sides with padding
@@ -332,21 +331,21 @@ func formatSANs(sans []string) string {
 	if availableWidth < 30 {
 		availableWidth = 30 // minimum width for readability
 	}
-	
+
 	// Word wrap the SANs individually
 	var lines []string
 	var currentLine []string
 	currentLineLength := 0
-	
+
 	for _, san := range sans {
 		// Calculate what the line would be with this SAN
 		addLength := len(san)
 		if len(currentLine) > 0 {
 			addLength += 2 // for ", "
 		}
-		
+
 		// Check if adding this SAN would exceed available width
-		if currentLineLength + addLength > availableWidth && len(currentLine) > 0 {
+		if currentLineLength+addLength > availableWidth && len(currentLine) > 0 {
 			// Save current line and start a new one
 			lines = append(lines, strings.Join(currentLine, ", "))
 			currentLine = []string{san}
@@ -357,12 +356,12 @@ func formatSANs(sans []string) string {
 			currentLineLength += addLength
 		}
 	}
-	
+
 	// Don't forget the last line
 	if len(currentLine) > 0 {
 		lines = append(lines, strings.Join(currentLine, ", "))
 	}
-	
+
 	// Join lines with newline and proper indentation
 	// The indentation should align with where the value starts
 	// Key column (20) + ": " (2) = 22 spaces
@@ -373,11 +372,11 @@ func formatSANs(sans []string) string {
 		}
 		return result
 	}
-	
+
 	if len(lines) > 0 {
 		return lines[0]
 	}
-	
+
 	return strings.Join(sans, ", ") // fallback
 }
 
@@ -386,11 +385,11 @@ func DisplayCertificateChain(chain []*cert.Certificate) {
 	if len(chain) == 0 {
 		return
 	}
-	
+
 	fmt.Println()
 	fmt.Println(titleStyle.Render("Certificate Chain"))
 	fmt.Println()
-	
+
 	for i, c := range chain {
 		// Create a summary view for chain certificates
 		table := [][]string{
@@ -400,7 +399,7 @@ func DisplayCertificateChain(chain []*cert.Certificate) {
 			{"Valid From", c.NotBefore.Format("2006-01-02")},
 			{"Valid To", c.NotAfter.Format("2006-01-02")},
 		}
-		
+
 		// Determine border color based on validity
 		var borderColor lipgloss.Color
 		if c.IsExpired {
@@ -413,20 +412,20 @@ func DisplayCertificateChain(chain []*cert.Certificate) {
 			borderColor = green
 			table = append(table, []string{"Status", successStyle.Render("Valid")})
 		}
-		
+
 		content := formatTable(table)
-		
+
 		// Get terminal width to constrain the panel
 		width, _, err := term.GetSize(0)
 		if err != nil || width <= 0 {
 			width = 80
 		}
-		
+
 		panel := panelStyle.Copy().
 			BorderForeground(borderColor).
 			Width(width - 4)
 		fmt.Println(panel.Render(content))
-		
+
 		if i < len(chain)-1 {
 			fmt.Println() // Space between chain certificates
 		}
@@ -442,10 +441,10 @@ func displayExtensions(cert *x509.Certificate) {
 	fmt.Println()
 	fmt.Println(headerStyle.Render("Certificate Extensions"))
 	fmt.Println()
-	
+
 	// Display parsed extensions with details
 	displayParsedExtensions(cert)
-	
+
 	// Display any remaining unparsed extensions
 	displayUnparsedExtensions(cert)
 }
@@ -458,14 +457,14 @@ func displayParsedExtensions(cert *x509.Certificate) {
 		displayKeyUsage(cert.KeyUsage)
 		fmt.Println()
 	}
-	
+
 	// Extended Key Usage
 	if len(cert.ExtKeyUsage) > 0 || len(cert.UnknownExtKeyUsage) > 0 {
 		fmt.Println(keyStyle.Render("Extended Key Usage") + getCriticalLabel(isExtensionCritical(cert, "2.5.29.37")))
 		displayExtendedKeyUsage(cert)
 		fmt.Println()
 	}
-	
+
 	// Basic Constraints
 	if cert.BasicConstraintsValid {
 		fmt.Println(keyStyle.Render("Basic Constraints") + getCriticalLabel(isExtensionCritical(cert, "2.5.29.19")))
@@ -481,7 +480,7 @@ func displayParsedExtensions(cert *x509.Certificate) {
 		}
 		fmt.Println()
 	}
-	
+
 	// Subject Alternative Names (skip if already shown in main display)
 	// We show a summary here since full list is in main display
 	if len(cert.DNSNames) > 0 || len(cert.IPAddresses) > 0 || len(cert.EmailAddresses) > 0 || len(cert.URIs) > 0 {
@@ -504,7 +503,7 @@ func displayParsedExtensions(cert *x509.Certificate) {
 		fmt.Printf("%s)\n", strings.Join(parts, ", "))
 		fmt.Println()
 	}
-	
+
 	// Authority Info Access
 	if len(cert.OCSPServer) > 0 || len(cert.IssuingCertificateURL) > 0 {
 		fmt.Println(keyStyle.Render("Authority Info Access"))
@@ -522,7 +521,7 @@ func displayParsedExtensions(cert *x509.Certificate) {
 		}
 		fmt.Println()
 	}
-	
+
 	// CRL Distribution Points
 	if len(cert.CRLDistributionPoints) > 0 {
 		fmt.Println(keyStyle.Render("CRL Distribution Points"))
@@ -531,7 +530,7 @@ func displayParsedExtensions(cert *x509.Certificate) {
 		}
 		fmt.Println()
 	}
-	
+
 	// Certificate Policies
 	if len(cert.PolicyIdentifiers) > 0 {
 		fmt.Println(keyStyle.Render("Certificate Policies"))
@@ -560,7 +559,7 @@ func displayKeyUsage(usage x509.KeyUsage) {
 		{x509.KeyUsageEncipherOnly, "Encipher Only", "✓"},
 		{x509.KeyUsageDecipherOnly, "Decipher Only", "✓"},
 	}
-	
+
 	for _, u := range usages {
 		if usage&u.flag != 0 {
 			fmt.Printf("  %s %s\n", successStyle.Render(u.icon), u.name)
@@ -586,13 +585,13 @@ func displayExtendedKeyUsage(cert *x509.Certificate) {
 		x509.ExtKeyUsageMicrosoftCommercialCodeSigning: "Microsoft Commercial Code Signing",
 		x509.ExtKeyUsageMicrosoftKernelCodeSigning:     "Microsoft Kernel Code Signing",
 	}
-	
+
 	for _, usage := range cert.ExtKeyUsage {
 		if name, ok := usageNames[usage]; ok {
 			fmt.Printf("  %s %s\n", successStyle.Render("✓"), name)
 		}
 	}
-	
+
 	for _, oid := range cert.UnknownExtKeyUsage {
 		fmt.Printf("  %s %s\n", valueStyle.Render("→"), oid.String())
 	}
@@ -602,40 +601,40 @@ func displayExtendedKeyUsage(cert *x509.Certificate) {
 func displayUnparsedExtensions(cert *x509.Certificate) {
 	// Map of OIDs to names for extensions we don't parse above
 	oidNames := map[string]string{
-		"2.5.29.14": "Subject Key Identifier",
-		"2.5.29.35": "Authority Key Identifier",
-		"2.5.29.31": "CRL Distribution Points",
-		"2.5.29.32": "Certificate Policies",
-		"1.3.6.1.5.5.7.1.1": "Authority Info Access",
+		"2.5.29.14":               "Subject Key Identifier",
+		"2.5.29.35":               "Authority Key Identifier",
+		"2.5.29.31":               "CRL Distribution Points",
+		"2.5.29.32":               "Certificate Policies",
+		"1.3.6.1.5.5.7.1.1":       "Authority Info Access",
 		"1.3.6.1.4.1.11129.2.4.2": "Certificate Transparency SCT",
-		"1.3.6.1.5.5.7.1.12": "Logo Type",
-		"2.5.29.9": "Subject Directory Attributes",
-		"2.5.29.16": "Private Key Usage Period",
-		"2.5.29.20": "CRL Number",
-		"2.5.29.28": "Issuing Distribution Point",
-		"2.5.29.30": "Name Constraints",
-		"2.5.29.33": "Policy Mappings",
-		"2.5.29.36": "Policy Constraints",
-		"2.5.29.54": "Inhibit Any Policy",
+		"1.3.6.1.5.5.7.1.12":      "Logo Type",
+		"2.5.29.9":                "Subject Directory Attributes",
+		"2.5.29.16":               "Private Key Usage Period",
+		"2.5.29.20":               "CRL Number",
+		"2.5.29.28":               "Issuing Distribution Point",
+		"2.5.29.30":               "Name Constraints",
+		"2.5.29.33":               "Policy Mappings",
+		"2.5.29.36":               "Policy Constraints",
+		"2.5.29.54":               "Inhibit Any Policy",
 	}
-	
+
 	displayed := map[string]bool{
-		"2.5.29.15": true, // Key Usage
-		"2.5.29.17": true, // SAN
-		"2.5.29.19": true, // Basic Constraints
-		"2.5.29.37": true, // Extended Key Usage
-		"2.5.29.31": true, // CRL Distribution Points
-		"2.5.29.32": true, // Certificate Policies
+		"2.5.29.15":         true, // Key Usage
+		"2.5.29.17":         true, // SAN
+		"2.5.29.19":         true, // Basic Constraints
+		"2.5.29.37":         true, // Extended Key Usage
+		"2.5.29.31":         true, // CRL Distribution Points
+		"2.5.29.32":         true, // Certificate Policies
 		"1.3.6.1.5.5.7.1.1": true, // Authority Info Access
 	}
-	
+
 	var otherExts []pkix.Extension
 	for _, ext := range cert.Extensions {
 		if !displayed[ext.Id.String()] {
 			otherExts = append(otherExts, ext)
 		}
 	}
-	
+
 	if len(otherExts) > 0 {
 		fmt.Println(keyStyle.Render("Other Extensions"))
 		for _, ext := range otherExts {
@@ -673,16 +672,16 @@ func getCriticalLabel(critical bool) string {
 // getPolicyName returns a human-readable name for common policy OIDs
 func getPolicyName(oid string) string {
 	policies := map[string]string{
-		"2.5.29.32.0": "Any Policy",
-		"2.23.140.1.2.1": "Domain Validated",
-		"2.23.140.1.2.2": "Organization Validated",
-		"2.23.140.1.2.3": "Individual Validated",
-		"2.23.140.1.1": "Extended Validation",
+		"2.5.29.32.0":                "Any Policy",
+		"2.23.140.1.2.1":             "Domain Validated",
+		"2.23.140.1.2.2":             "Organization Validated",
+		"2.23.140.1.2.3":             "Individual Validated",
+		"2.23.140.1.1":               "Extended Validation",
 		"1.3.6.1.4.1.6449.1.2.1.3.1": "StartCom Domain Validated",
 		"1.3.6.1.4.1.6449.1.2.1.5.1": "StartCom Organization Validated",
 		"1.3.6.1.4.1.6449.1.2.1.6.1": "StartCom Extended Validation",
 	}
-	
+
 	if name, ok := policies[oid]; ok {
 		return fmt.Sprintf("%s (%s)", name, oid)
 	}

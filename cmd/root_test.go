@@ -55,7 +55,7 @@ func TestRootCommand(t *testing.T) {
 				}
 			}
 
-			// Note: Cobra output goes to the configured streams, 
+			// Note: Cobra output goes to the configured streams,
 			// so we don't check specific output content in these tests
 		})
 	}
@@ -67,7 +67,7 @@ func TestCommandStructure(t *testing.T) {
 		"completion", // Added by Cobra
 		"convert",
 		"generate",
-		"help",    // Added by Cobra
+		"help", // Added by Cobra
 		"inspect",
 		"verify",
 		"version",

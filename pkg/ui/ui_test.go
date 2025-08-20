@@ -180,7 +180,7 @@ func TestFormatSANs(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := formatSANs(tt.sans)
-			
+
 			// Check that result contains all SANs
 			for _, san := range tt.sans {
 				if !strings.Contains(result, san) {
@@ -404,16 +404,16 @@ func TestDisplayCertificate(t *testing.T) {
 			CommonName:   "Test CA",
 			Organization: []string{"Test CA Org"},
 		},
-		NotBefore:    now.Add(-24 * time.Hour),
-		NotAfter:     now.Add(30 * 24 * time.Hour),
-		DNSNames:     []string{"test.example.com", "*.test.example.com"},
-		IPAddresses:  []net.IP{net.ParseIP("127.0.0.1")},
-		KeyUsage:     x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment,
-		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
-		IsCA:         false,
+		NotBefore:             now.Add(-24 * time.Hour),
+		NotAfter:              now.Add(30 * 24 * time.Hour),
+		DNSNames:              []string{"test.example.com", "*.test.example.com"},
+		IPAddresses:           []net.IP{net.ParseIP("127.0.0.1")},
+		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment,
+		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+		IsCA:                  false,
 		BasicConstraintsValid: true,
-		PublicKey:    &rsaKey.PublicKey,
-		SignatureAlgorithm: x509.SHA256WithRSA,
+		PublicKey:             &rsaKey.PublicKey,
+		SignatureAlgorithm:    x509.SHA256WithRSA,
 	}
 
 	testCert := &cert.Certificate{

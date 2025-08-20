@@ -40,7 +40,9 @@
       "Bash(./test-ci.sh:*)",
       "Bash(GO111MODULE=on go build -mod=readonly -o cert .)",
       "Bash(git restore:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(gh run list:*)",
+      "WebFetch(domain:github.com)"
     ],
     "deny": [],
     "ask": [],

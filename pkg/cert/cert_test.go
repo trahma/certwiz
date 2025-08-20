@@ -517,7 +517,7 @@ func TestGenerateOptionsDefaults(t *testing.T) {
 // For now, we'll create a placeholder that documents what should be tested
 func TestInspectURLWithChain(t *testing.T) {
 	t.Skip("Skipping URL inspection test - requires network or mock server")
-	
+
 	// This test would verify:
 	// 1. Successful connection to HTTPS server
 	// 2. Retrieval of server certificate
