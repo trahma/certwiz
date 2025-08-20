@@ -3,13 +3,17 @@
 /certwiz
 *.exe
 
-# Test certificates
+# Test certificates (but allow in testdata)
 *.crt
 *.key
 *.der
 *.pem
 *.p12
 *.pfx
+!testdata/*.pem
+!testdata/*.der
+!testdata/*.crt
+!testdata/*.key
 
 # Go build artifacts
 *.test
