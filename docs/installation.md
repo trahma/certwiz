@@ -153,6 +153,25 @@ cert completion powershell >> $PROFILE
 
 ## Updating
 
+### Automatic Update (Recommended) 🔄
+
+The easiest way to update cert is using the built-in update command:
+
+```bash
+# Check for and install updates
+cert update
+
+# Force reinstall current version (useful for fixing corrupted installations)
+cert update --force
+```
+
+The update command will:
+- ✅ Check for the latest version
+- ✅ Compare with your current version
+- ✅ Download and install if an update is available
+- ✅ Automatically detect your installation location
+- ✅ Create a backup of the current binary
+
 ### Using the installer script
 ```bash
 # Update to latest version
@@ -161,6 +180,8 @@ curl -sSL https://raw.githubusercontent.com/trahma/certwiz/main/install.sh | bas
 # Update to specific version
 curl -sSL https://raw.githubusercontent.com/trahma/certwiz/main/install.sh | bash -s -- --version v0.2.0
 ```
+
+The installer will automatically detect your existing installation and upgrade it in place.
 
 ### If installed with Go
 ```bash

@@ -242,6 +242,69 @@ All commands use standard exit codes:
 - `2` - Invalid arguments
 - `3` - Certificate validation failed
 
+## update
+
+Update cert to the latest version.
+
+### Synopsis
+
+```bash
+cert update [flags]
+```
+
+### Options
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--force` | Force update even if already on latest version | `false` |
+
+### Description
+
+The update command checks for the latest version of cert and installs it if an update is available. It will:
+
+1. Check the latest version from GitHub releases
+2. Compare with your current version
+3. Download and install if newer version is available
+4. Automatically detect your installation directory
+5. Create a backup of the current binary before upgrading
+
+### Examples
+
+```bash
+# Check for and install updates
+cert update
+
+# Force reinstall current version (useful for fixing corrupted installations)
+cert update --force
+```
+
+### Notes
+
+- The update command is not available on Windows. Windows users should download the latest version from the releases page.
+- The installer creates a backup of your current binary as `cert.backup` in the same directory
+- If the update fails, you can restore the backup manually
+
+## version
+
+Show the version of cert.
+
+### Synopsis
+
+```bash
+cert version
+```
+
+### Description
+
+Displays the current version of cert installed on your system.
+
+### Examples
+
+```bash
+cert version
+# Output: cert version 0.1.4
+```
+
 ## completion
 
 Generate shell completion scripts.

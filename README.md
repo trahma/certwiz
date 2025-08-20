@@ -50,6 +50,16 @@ Or install a specific version:
 curl -sSL https://raw.githubusercontent.com/trahma/certwiz/main/install.sh | bash -s -- --version v0.1.0
 ```
 
+### Updating
+
+To update cert to the latest version:
+
+```bash
+cert update
+```
+
+The installer will automatically detect your existing installation and upgrade it in place.
+
 ### Manual Installation
 
 Download pre-built binaries from the [releases page](https://github.com/trahma/certwiz/releases).
