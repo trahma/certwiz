@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/spf13/cobra"
 )
@@ -71,10 +70,3 @@ var versionCmd = &cobra.Command{
 	},
 }
 
-// checkError is a helper function to handle errors consistently
-func checkError(err error) {
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
-	}
-}

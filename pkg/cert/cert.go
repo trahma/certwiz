@@ -17,6 +17,12 @@ import (
 	"time"
 )
 
+const (
+	// Format constants
+	FormatPEM = "PEM"
+	FormatDER = "DER"
+)
+
 // Certificate represents a parsed X.509 certificate with additional metadata
 type Certificate struct {
 	*x509.Certificate

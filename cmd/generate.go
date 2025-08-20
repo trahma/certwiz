@@ -11,11 +11,11 @@ import (
 )
 
 var (
-	generateCN     string
-	generateDays   int
+	generateCN      string
+	generateDays    int
 	generateKeySize int
-	generateSANs   []string
-	generateOutput string
+	generateSANs    []string
+	generateOutput  string
 )
 
 var generateCmd = &cobra.Command{
@@ -36,7 +36,7 @@ Examples:
 			ui.ShowError("Common Name (--cn) is required")
 			os.Exit(1)
 		}
-		
+
 		opts := cert.GenerateOptions{
 			CommonName: generateCN,
 			Days:       generateDays,
@@ -56,7 +56,7 @@ Examples:
 
 		certPath := filepath.Join(generateOutput, generateCN+".crt")
 		keyPath := filepath.Join(generateOutput, generateCN+".key")
-		
+
 		ui.DisplayGenerationResult(certPath, keyPath)
 
 		// Also display the generated certificate
@@ -73,6 +73,6 @@ func init() {
 	generateCmd.Flags().IntVar(&generateKeySize, "key-size", 2048, "RSA key size in bits")
 	generateCmd.Flags().StringSliceVar(&generateSANs, "san", []string{}, "Subject Alternative Name (can be used multiple times)")
 	generateCmd.Flags().StringVar(&generateOutput, "output", ".", "Output directory")
-	
+
 	generateCmd.MarkFlagRequired("cn")
 }

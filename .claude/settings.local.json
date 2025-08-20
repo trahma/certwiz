@@ -31,7 +31,16 @@
       "Bash(curl:*)",
       "Bash(tar:*)",
       "Bash(ls:*)",
-      "Bash($HOME/.local/bin/cert:*)"
+      "Bash($HOME/.local/bin/cert:*)",
+      "Bash(get_writable_path_dirs)",
+      "Bash(golangci-lint run:*)",
+      "Bash(./cert:*)",
+      "Bash(go:*)",
+      "Bash(./test-ci-locally.sh:*)",
+      "Bash(./test-ci.sh:*)",
+      "Bash(GO111MODULE=on go build -mod=readonly -o cert .)",
+      "Bash(git restore:*)",
+      "Bash(grep:*)"
     ],
     "deny": [],
     "ask": [],

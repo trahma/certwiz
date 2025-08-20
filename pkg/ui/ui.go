@@ -22,7 +22,6 @@ var (
 	yellow  = lipgloss.Color("#ffff00")
 	cyan    = lipgloss.Color("#00ffff")
 	blue    = lipgloss.Color("#0066cc")
-	gray    = lipgloss.Color("#888888")
 	white   = lipgloss.Color("#ffffff")
 
 	// Styles
@@ -59,8 +58,6 @@ var (
 		BorderForeground(cyan).
 		Padding(1, 2)
 
-	tableStyle = lipgloss.NewStyle().
-		Padding(0, 1)
 )
 
 // DisplayCertificate shows certificate information in a formatted table
@@ -92,9 +89,7 @@ func DisplayCertificate(cert *cert.Certificate, showFull bool) {
 	// Add SANs if present
 	if len(cert.DNSNames) > 0 || len(cert.IPAddresses) > 0 {
 		sans := []string{}
-		for _, dns := range cert.DNSNames {
-			sans = append(sans, dns)
-		}
+		sans = append(sans, cert.DNSNames...)
 		for _, ip := range cert.IPAddresses {
 			sans = append(sans, ip.String())
 		}

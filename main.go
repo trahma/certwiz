@@ -2,7 +2,7 @@ package main
 
 import (
 	"os"
-	
+
 	"certwiz/cmd"
 )
 
