@@ -69,6 +69,7 @@ func TestCommandStructure(t *testing.T) {
 		"generate",
 		"help", // Added by Cobra
 		"inspect",
+		"update",
 		"verify",
 		"version",
 	}
