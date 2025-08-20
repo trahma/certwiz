@@ -139,6 +139,34 @@ if err != nil {
 }
 ```
 
+## CI/CD and Linting
+
+### Local Testing Before Push
+**IMPORTANT**: Always test locally with the same tools CI uses before pushing changes.
+
+```bash
+# Run tests with race detector (as CI does)
+go test -v -race ./...
+
+# Run linting with latest golangci-lint
+docker run --rm -v $(pwd):/app -w /app golangci/golangci-lint:latest golangci-lint run --timeout=5m
+
+# Check specific Go version compatibility
+docker run --rm -v $(pwd):/app -w /app golang:1.20 go test ./...
+```
+
+### Linting Requirements
+- All error returns must be checked (use `_ =` if intentionally ignoring)
+- Deferred Close() calls should handle errors: `defer func() { _ = conn.Close() }()`
+- Use embedded struct fields directly when possible (avoid redundant field access)
+- Follow golangci-lint default rules (no custom .golangci.yml needed)
+
+### Common CI Issues & Solutions
+1. **"Previous case" error in switch statements**: Missing import (e.g., crypto/ecdsa)
+2. **"Could remove embedded field from selector"**: Use `cert.FieldName` instead of `cert.Certificate.FieldName`
+3. **Unchecked errors**: Add `_ =` for intentionally ignored errors
+4. **Test failures with -race**: Ensure no concurrent access to shared resources
+
 ## Testing Guidelines
 
 ### Manual Testing Commands
