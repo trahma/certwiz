@@ -3,9 +3,9 @@ module certwiz
 go 1.20
 
 require (
-	github.com/charmbracelet/lipgloss v1.1.0
-	github.com/spf13/cobra v1.9.1
-	golang.org/x/term v0.34.0
+	github.com/charmbracelet/lipgloss v0.13.0
+	github.com/spf13/cobra v1.8.0
+	golang.org/x/term v0.18.0
 )
 
 require (
