@@ -64,11 +64,12 @@ func TestRootCommand(t *testing.T) {
 func TestCommandStructure(t *testing.T) {
 	// Verify all expected commands are registered
 	expectedCommands := []string{
-		"completion", // Added by Cobra
+		"ca",       // Certificate Authority generation
 		"convert",
+		"csr",      // Certificate Signing Request generation
 		"generate",
-		"help", // Added by Cobra
 		"inspect",
+		"sign",     // Sign CSRs with CA
 		"update",
 		"verify",
 		"version",
