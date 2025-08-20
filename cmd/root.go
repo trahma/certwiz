@@ -6,7 +6,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var version = "0.1.2"
+var version = "0.1.4"
 
 var versionFlag bool
 
