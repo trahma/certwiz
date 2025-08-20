@@ -19,6 +19,7 @@ certwiz makes working with X.509 certificates as simple as possible. No more wre
 - 🔗 **View certificate chains** to understand trust paths
 - 📊 **Detailed extension analysis** with human-readable output
 - 🎨 **Beautiful terminal output** with colors and formatting
+- 📄 **JSON output** for scripting and automation
 - 💡 **Smart defaults** that just work
 
 ## 🚀 Quick Start
@@ -137,6 +138,24 @@ cert inspect example.com
 
 # Generating a certificate with SANs
 cert generate --cn example.com --san example.com --san "*.example.com"
+```
+
+## 📄 JSON Output
+
+All commands support JSON output for easy scripting and automation:
+
+```bash
+# Inspect with JSON output
+cert inspect google.com --json | jq '.subject.common_name'
+
+# Generate and get file paths
+cert generate --cn test.local --json | jq '.files[]'
+
+# Verify and check status
+cert verify cert.pem --json | jq '.is_valid'
+
+# Parse certificate expiry
+cert inspect cert.pem --json | jq '.days_until_expiry'
 ```
 
 ## 🔥 Key Features in Detail

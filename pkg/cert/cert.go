@@ -1,6 +1,7 @@
 package cert
 
 import (
+	"crypto/ecdsa"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/tls"
@@ -292,6 +293,30 @@ func parseCertificate(data []byte) (*x509.Certificate, string, error) {
 	}
 
 	return cert, FormatDER, nil
+}
+
+// getPublicKeyAlgorithm returns the algorithm name for a public key
+func getPublicKeyAlgorithm(pubKey interface{}) string {
+	switch pubKey.(type) {
+	case *rsa.PublicKey:
+		return "RSA"
+	case *ecdsa.PublicKey:
+		return "ECDSA"
+	default:
+		return "Unknown"
+	}
+}
+
+// getPublicKeySize returns the size of a public key in bits
+func getPublicKeySize(pubKey interface{}) int {
+	switch key := pubKey.(type) {
+	case *rsa.PublicKey:
+		return key.N.BitLen()
+	case *ecdsa.PublicKey:
+		return key.Params().BitSize
+	default:
+		return 0
+	}
 }
 
 // GenerateCSR generates a Certificate Signing Request

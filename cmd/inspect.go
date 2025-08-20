@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"encoding/json"
+	"fmt"
 	"os"
 	"strconv"
 	"strings"
@@ -39,12 +41,32 @@ Examples:
 		// Determine if target is a file or URL
 		if _, err := os.Stat(target); err == nil {
 			// It's a file
-			cert, err := cert.InspectFile(target)
+			certificate, err := cert.InspectFile(target)
 			if err != nil {
-				ui.ShowError(err.Error())
+				if jsonOutput {
+					result := cert.JSONOperationResult{
+						Success: false,
+						Error:   err.Error(),
+					}
+					jsonData, _ := json.MarshalIndent(result, "", "  ")
+					fmt.Println(string(jsonData))
+				} else {
+					ui.ShowError(err.Error())
+				}
 				os.Exit(1)
 			}
-			ui.DisplayCertificate(cert, inspectFull)
+			
+			if jsonOutput {
+				jsonCert := certificate.ToJSON()
+				jsonData, err := json.MarshalIndent(jsonCert, "", "  ")
+				if err != nil {
+					ui.ShowError(fmt.Sprintf("Failed to marshal JSON: %v", err))
+					os.Exit(1)
+				}
+				fmt.Println(string(jsonData))
+			} else {
+				ui.DisplayCertificate(certificate, inspectFull)
+			}
 		} else {
 			// It's a URL/hostname
 			port := inspectPort
@@ -60,16 +82,51 @@ Examples:
 				}
 			}
 
-			cert, chain, err := cert.InspectURLWithChain(target, port)
+			certificate, chain, err := cert.InspectURLWithChain(target, port)
 			if err != nil {
-				ui.ShowError(err.Error())
+				if jsonOutput {
+					result := cert.JSONOperationResult{
+						Success: false,
+						Error:   err.Error(),
+					}
+					jsonData, _ := json.MarshalIndent(result, "", "  ")
+					fmt.Println(string(jsonData))
+				} else {
+					ui.ShowError(err.Error())
+				}
 				os.Exit(1)
 			}
-			ui.DisplayCertificate(cert, inspectFull)
 
-			// Display chain if requested
-			if inspectChain && len(chain) > 0 {
-				ui.DisplayCertificateChain(chain)
+			if jsonOutput {
+				jsonCert := certificate.ToJSON()
+				
+				// Add chain if requested
+				if inspectChain && len(chain) > 0 {
+					for _, c := range chain {
+						jsonCert.Chain = append(jsonCert.Chain, cert.JSONCertSummary{
+							Subject:      c.Subject.String(),
+							Issuer:       c.Issuer.String(),
+							NotBefore:    c.NotBefore,
+							NotAfter:     c.NotAfter,
+							IsExpired:    c.IsExpired,
+							SerialNumber: c.SerialNumber.Text(16),
+						})
+					}
+				}
+				
+				jsonData, err := json.MarshalIndent(jsonCert, "", "  ")
+				if err != nil {
+					ui.ShowError(fmt.Sprintf("Failed to marshal JSON: %v", err))
+					os.Exit(1)
+				}
+				fmt.Println(string(jsonData))
+			} else {
+				ui.DisplayCertificate(certificate, inspectFull)
+
+				// Display chain if requested
+				if inspectChain && len(chain) > 0 {
+					ui.DisplayCertificateChain(chain)
+				}
 			}
 		}
 	},

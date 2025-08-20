@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"encoding/json"
+	"fmt"
 	"os"
 
 	"certwiz/pkg/cert"
@@ -34,15 +36,36 @@ Examples:
 			os.Exit(1)
 		}
 
-		ui.ShowInfo("Verifying certificate...")
+		if !jsonOutput {
+			ui.ShowInfo("Verifying certificate...")
+		}
 
 		result, err := cert.Verify(certPath, verifyCA, verifyHost)
 		if err != nil {
-			ui.ShowError(err.Error())
+			if jsonOutput {
+				result := cert.JSONOperationResult{
+					Success: false,
+					Error:   err.Error(),
+				}
+				jsonData, _ := json.MarshalIndent(result, "", "  ")
+				fmt.Println(string(jsonData))
+			} else {
+				ui.ShowError(err.Error())
+			}
 			os.Exit(1)
 		}
 
-		ui.DisplayVerificationResult(result)
+		if jsonOutput {
+			jsonResult := result.ToJSON()
+			jsonData, err := json.MarshalIndent(jsonResult, "", "  ")
+			if err != nil {
+				ui.ShowError(fmt.Sprintf("Failed to marshal JSON: %v", err))
+				os.Exit(1)
+			}
+			fmt.Println(string(jsonData))
+		} else {
+			ui.DisplayVerificationResult(result)
+		}
 
 		// Exit with error code if verification failed
 		if !result.IsValid {

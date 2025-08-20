@@ -8,7 +8,10 @@ import (
 
 var version = "0.1.6"
 
-var versionFlag bool
+var (
+	versionFlag bool
+	jsonOutput  bool
+)
 
 var rootCmd = &cobra.Command{
 	Use:   "cert",
@@ -51,6 +54,9 @@ func Execute() error {
 }
 
 func init() {
+	// Add global flags
+	rootCmd.PersistentFlags().BoolVar(&jsonOutput, "json", false, "Output in JSON format")
+	
 	// Add version flag
 	rootCmd.Flags().BoolVarP(&versionFlag, "version", "v", false, "Print version information")
 

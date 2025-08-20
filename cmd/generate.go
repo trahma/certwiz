@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -45,24 +47,45 @@ Examples:
 			OutputDir:  generateOutput,
 		}
 
-		ui.ShowInfo("Generating RSA private key...")
-		ui.ShowInfo("Creating self-signed certificate...")
+		if !jsonOutput {
+			ui.ShowInfo("Generating RSA private key...")
+			ui.ShowInfo("Creating self-signed certificate...")
+		}
 
 		err := cert.Generate(opts)
 		if err != nil {
-			ui.ShowError(err.Error())
+			if jsonOutput {
+				result := cert.JSONOperationResult{
+					Success: false,
+					Error:   err.Error(),
+				}
+				jsonData, _ := json.MarshalIndent(result, "", "  ")
+				fmt.Println(string(jsonData))
+			} else {
+				ui.ShowError(err.Error())
+			}
 			os.Exit(1)
 		}
 
 		certPath := filepath.Join(generateOutput, generateCN+".crt")
 		keyPath := filepath.Join(generateOutput, generateCN+".key")
 
-		ui.DisplayGenerationResult(certPath, keyPath)
+		if jsonOutput {
+			result := cert.JSONOperationResult{
+				Success: true,
+				Message: "Certificate generated successfully",
+				Files:   []string{certPath, keyPath},
+			}
+			jsonData, _ := json.MarshalIndent(result, "", "  ")
+			fmt.Println(string(jsonData))
+		} else {
+			ui.DisplayGenerationResult(certPath, keyPath)
 
-		// Also display the generated certificate
-		generatedCert, err := cert.InspectFile(certPath)
-		if err == nil {
-			ui.DisplayCertificate(generatedCert, false)
+			// Also display the generated certificate
+			generatedCert, err := cert.InspectFile(certPath)
+			if err == nil {
+				ui.DisplayCertificate(generatedCert, false)
+			}
 		}
 	},
 }
