@@ -70,4 +70,4 @@ This command will:
 func init() {
 	updateCmd.Flags().BoolVar(&forceUpdate, "force", false, "Force update even if already on latest version")
 	rootCmd.AddCommand(updateCmd)
-}// Force CI refresh
+}
