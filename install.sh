@@ -128,7 +128,7 @@ choose_install_dir() {
     # Get user choice
     while true; do
         prompt "Select option [1-3, c]: "
-        read -r choice
+        read -r choice < /dev/tty
         
         case "$choice" in
             1)
@@ -146,7 +146,7 @@ choose_install_dir() {
             c|C)
                 printf "\n" >&2
                 prompt "Enter custom directory path: "
-                read -r custom_dir
+                read -r custom_dir < /dev/tty
                 
                 # Expand ~ to home directory if present
                 case "$custom_dir" in
