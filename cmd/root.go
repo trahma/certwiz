@@ -9,6 +9,8 @@ import (
 
 var version = "0.1.0"
 
+var versionFlag bool
+
 var rootCmd = &cobra.Command{
 	Use:   "cert",
 	Short: "A user-friendly CLI tool for certificate management",
@@ -35,6 +37,13 @@ Examples:
   # Verify a certificate
   cert verify cert.pem
   cert verify cert.pem --host example.com`,
+	Run: func(cmd *cobra.Command, args []string) {
+		if versionFlag {
+			fmt.Printf("cert version %s\n", version)
+			return
+		}
+		cmd.Help()
+	},
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -43,6 +52,9 @@ func Execute() error {
 }
 
 func init() {
+	// Add version flag
+	rootCmd.Flags().BoolVarP(&versionFlag, "version", "v", false, "Print version information")
+	
 	// Add subcommands
 	rootCmd.AddCommand(inspectCmd)
 	rootCmd.AddCommand(generateCmd)
