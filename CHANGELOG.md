@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.9] - 2025-08-20
+
+### Added
+- **New `--connect` flag for inspect command**
+  - Allows connecting to a different host while validating the certificate for the target hostname
+  - Useful for testing certificates through proxies, tunnels, or local services
+  - Supports port specification in the connect host (e.g., `--connect localhost:8080`)
+  - Example: `cert inspect api.example.com --connect localhost:8080`
+
+### Changed
+- Enhanced inspect command to support split hostname/connection scenarios
+- Improved examples in help text to show proxy/tunnel use cases
+
 ## [0.1.8] - 2025-08-20
 
 ### Fixed
@@ -140,6 +153,7 @@ All features from v0.1.6 are included in this release.
 - Binary named `cert` for ease of use
 - Project name remains `certwiz`
 
+[0.1.9]: https://github.com/trahma/certwiz/releases/tag/v0.1.9
 [0.1.8]: https://github.com/trahma/certwiz/releases/tag/v0.1.8
 [0.1.7]: https://github.com/trahma/certwiz/releases/tag/v0.1.7
 [0.1.6]: https://github.com/trahma/certwiz/releases/tag/v0.1.6

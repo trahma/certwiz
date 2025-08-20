@@ -14,9 +14,10 @@ import (
 )
 
 var (
-	inspectFull  bool
-	inspectPort  int
-	inspectChain bool
+	inspectFull    bool
+	inspectPort    int
+	inspectChain   bool
+	inspectConnect string
 )
 
 var inspectCmd = &cobra.Command{
@@ -33,7 +34,9 @@ Examples:
   cert inspect cert.der --full  
   cert inspect google.com
   cert inspect https://example.com:8443 --port 8443
-  cert inspect 192.168.1.1:443`,
+  cert inspect 192.168.1.1:443
+  cert inspect google.com --connect localhost:8080
+  cert inspect api.example.com --connect tunnel.local --port 443`,
 	Args: cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		target := args[0]
@@ -70,6 +73,7 @@ Examples:
 		} else {
 			// It's a URL/hostname
 			port := inspectPort
+			connectHost := ""
 
 			// Extract port from target if specified
 			if strings.Contains(target, ":") && !strings.HasPrefix(target, "http") {
@@ -82,7 +86,23 @@ Examples:
 				}
 			}
 
-			certificate, chain, err := cert.InspectURLWithChain(target, port)
+			// Handle --connect flag
+			if inspectConnect != "" {
+				connectHost = inspectConnect
+				// Check if connect has a port specified
+				if strings.Contains(connectHost, ":") {
+					parts := strings.Split(connectHost, ":")
+					if len(parts) == 2 {
+						if p, err := strconv.Atoi(parts[1]); err == nil {
+							connectHost = parts[0]
+							port = p // Override port with the one from --connect
+						}
+					}
+				}
+			}
+
+			// Use the enhanced function that supports connect host
+			certificate, chain, err := cert.InspectURLWithConnect(target, port, connectHost)
 			if err != nil {
 				if jsonOutput {
 					result := cert.JSONOperationResult{
@@ -136,4 +156,5 @@ func init() {
 	inspectCmd.Flags().BoolVar(&inspectFull, "full", false, "Show full certificate details including extensions")
 	inspectCmd.Flags().IntVar(&inspectPort, "port", 443, "Port for remote inspection")
 	inspectCmd.Flags().BoolVar(&inspectChain, "chain", false, "Show certificate chain")
+	inspectCmd.Flags().StringVar(&inspectConnect, "connect", "", "Connect to a different host (e.g., localhost:8080) while validating the cert for the target hostname")
 }

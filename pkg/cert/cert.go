@@ -63,6 +63,13 @@ func InspectURL(targetURL string, port int) (*Certificate, error) {
 
 // InspectURLWithChain connects to a URL and retrieves its certificate and chain
 func InspectURLWithChain(targetURL string, port int) (*Certificate, []*Certificate, error) {
+	return InspectURLWithConnect(targetURL, port, "")
+}
+
+// InspectURLWithConnect connects to a specific host but validates the certificate for the target URL
+// This is useful for testing certificates through proxies, tunnels, or local services
+// If connectHost is empty, it connects directly to the target
+func InspectURLWithConnect(targetURL string, port int, connectHost string) (*Certificate, []*Certificate, error) {
 	// Parse and normalize URL
 	if !strings.Contains(targetURL, "://") {
 		targetURL = "https://" + targetURL
@@ -73,17 +80,27 @@ func InspectURLWithChain(targetURL string, port int) (*Certificate, []*Certifica
 		return nil, nil, fmt.Errorf("invalid URL: %w", err)
 	}
 
-	host := u.Hostname()
-	if u.Port() != "" {
-		host = net.JoinHostPort(u.Hostname(), u.Port())
+	// Determine the actual host to connect to
+	var dialHost string
+	serverName := u.Hostname() // Always use the target hostname for TLS verification
+	
+	if connectHost != "" {
+		// Use the provided connect host
+		dialHost = fmt.Sprintf("%s:%d", connectHost, port)
 	} else {
-		host = fmt.Sprintf("%s:%d", host, port)
+		// Connect directly to the target
+		host := u.Hostname()
+		if u.Port() != "" {
+			dialHost = net.JoinHostPort(u.Hostname(), u.Port())
+		} else {
+			dialHost = fmt.Sprintf("%s:%d", host, port)
+		}
 	}
 
 	// Connect with TLS
-	conn, err := tls.Dial("tcp", host, &tls.Config{
+	conn, err := tls.Dial("tcp", dialHost, &tls.Config{
 		InsecureSkipVerify: true, // We want to inspect even invalid certs
-		ServerName:         u.Hostname(),
+		ServerName:         serverName, // Use the target hostname for SNI
 	})
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to connect: %w", err)

@@ -7,7 +7,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var version = "0.1.8"
+var version = "0.1.9"
 
 var (
 	versionFlag bool
@@ -26,6 +26,10 @@ Similar to HTTPie but for certificates.`,
   # Inspect a website's certificate  
   cert inspect google.com
   cert inspect https://example.com:8443
+  
+  # Inspect through a proxy or tunnel
+  cert inspect api.example.com --connect localhost:8080
+  cert inspect google.com --connect tunnel.local --port 443
   
   # Generate a self-signed certificate
   cert generate --cn example.com
