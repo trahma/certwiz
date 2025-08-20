@@ -316,8 +316,18 @@ download_binary() {
     local arch="$3"
     local temp_dir="$(mktemp -d)"
     
+    # Map architecture names to match goreleaser output
+    local arch_name="${arch}"
+    if [[ "${arch}" == "amd64" ]]; then
+        arch_name="x86_64"
+    elif [[ "${arch}" == "386" ]]; then
+        arch_name="i386"
+    elif [[ "${arch}" == "arm" ]]; then
+        arch_name="armv7"
+    fi
+    
     # Construct download URL
-    local binary_name="${BINARY_NAME}-${os}-${arch}"
+    local binary_name="${BINARY_NAME}-${os}-${arch_name}"
     local archive_name="${binary_name}.tar.gz"
     local download_url="https://github.com/${REPO_OWNER}/${REPO_NAME}/releases/download/${version}/${archive_name}"
     
