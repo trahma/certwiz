@@ -166,6 +166,8 @@ docker run --rm -v $(pwd):/app -w /app golang:1.20 go test ./...
 2. **"Could remove embedded field from selector"**: Use `cert.FieldName` instead of `cert.Certificate.FieldName`
 3. **Unchecked errors**: Add `_ =` for intentionally ignored errors
 4. **Test failures with -race**: Ensure no concurrent access to shared resources
+5. **Missing test files**: Ensure all testdata files are committed to git (update .gitignore if needed)
+6. **IP addresses in SANs**: Use `--san IP:192.168.1.1` format, not just `--san 192.168.1.1`
 
 ## Testing Guidelines
 
@@ -177,8 +179,8 @@ docker run --rm -v $(pwd):/app -w /app golang:1.20 go test ./...
 # Full details with chain
 ./cert inspect google.com --full --chain
 
-# Generate certificate
-./cert generate --cn test.local --san test.local
+# Generate certificate (note: IP addresses need IP: prefix)
+./cert generate --cn test.local --san test.local --san IP:192.168.1.1
 
 # Convert format
 ./cert convert test.pem test.der --format der
