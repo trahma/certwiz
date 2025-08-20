@@ -171,6 +171,107 @@ docker run --rm -v $(pwd):/app -w /app golang:1.20 go test ./...
 
 ## Testing Guidelines
 
+### CRITICAL: Always Run Tests Before Pushing
+**The most common CI failures come from not running tests locally first!**
+
+```bash
+# ALWAYS run this exact command before pushing (same as CI):
+go test -v -race -coverprofile coverage.out ./...
+
+# If tests pass locally but fail in CI, try:
+go clean -testcache  # Clear test cache
+go mod tidy          # Ensure dependencies are correct
+go test -v -race -coverprofile coverage.out ./...
+```
+
+### Debugging CI Test Failures
+
+When CI tests fail but local tests pass:
+
+1. **Check the exact error message in CI**
+   - Syntax errors often indicate file corruption or encoding issues
+   - "unexpected var after top level declaration" = likely extra characters at EOF
+   - Build failures in one package can cascade to others
+
+2. **Verify file integrity**
+   ```bash
+   # Check for hidden characters at end of file
+   tail -5 cmd/update.go | od -c
+   
+   # Ensure file ends with single newline
+   tail -c 10 cmd/update.go | xxd
+   
+   # Compare local vs GitHub version
+   curl -s https://raw.githubusercontent.com/trahma/certwiz/main/cmd/update.go | diff - cmd/update.go
+   ```
+
+3. **Force a fresh CI build**
+   ```bash
+   # Add and remove a comment to trigger fresh build
+   echo "// CI refresh" >> cmd/update.go
+   git add cmd/update.go && git commit -m "Trigger CI rebuild"
+   git push origin main
+   
+   # Then clean up
+   git revert HEAD && git push origin main
+   ```
+
+4. **Check for platform-specific issues**
+   ```bash
+   # Test on different OS if possible
+   docker run --rm -v $(pwd):/app -w /app golang:1.20-alpine go test ./...
+   docker run --rm -v $(pwd):/app -w /app golang:1.20-bullseye go test ./...
+   ```
+
+### Test File Management
+
+**Important**: Test data files must be committed to git!
+
+```bash
+# Check that testdata files are tracked
+git ls-files testdata/
+
+# If missing, ensure .gitignore allows them
+# .gitignore should have:
+!testdata/*.pem
+!testdata/*.der
+!testdata/*.crt
+!testdata/*.key
+
+# Add test files to git
+git add testdata/*.pem testdata/*.der
+git commit -m "Add test certificates"
+```
+
+### Path Issues in Tests
+
+**Cross-platform path handling is critical!**
+
+```go
+// BAD - Will fail on Windows
+file: "../../testdata/valid.pem"
+
+// GOOD - Works everywhere
+import "path/filepath"
+file: filepath.Join("..", "..", "testdata", "valid.pem")
+
+// BETTER - Use a helper function
+func testdataPath(filename string) string {
+    return filepath.Join("..", "..", "testdata", filename)
+}
+```
+
+### Windows-Specific Test Issues
+
+```bash
+# Windows command line parsing issues
+# BAD:
+go test -coverprofile=coverage.out  # Windows may parse this incorrectly
+
+# GOOD:
+go test -coverprofile coverage.out  # Space instead of =
+```
+
 ### Manual Testing Commands
 ```bash
 # Basic inspection
@@ -187,6 +288,10 @@ docker run --rm -v $(pwd):/app -w /app golang:1.20 go test ./...
 
 # Verify certificate
 ./cert verify test.crt --host test.local
+
+# Test update functionality
+./cert update
+./cert update --force
 ```
 
 ### Common Test Domains
@@ -194,6 +299,15 @@ docker run --rm -v $(pwd):/app -w /app golang:1.20 go test ./...
 - github.com (standard setup)
 - expired.badssl.com (expired cert)
 - self-signed.badssl.com (self-signed)
+
+### Running Tests Locally Before Push Checklist
+
+1. ✅ Run full test suite: `go test -v -race -coverprofile coverage.out ./...`
+2. ✅ Check for any modified files: `git status`
+3. ✅ Ensure all new files are added: `git add .`
+4. ✅ Verify builds cleanly: `go build -o cert .`
+5. ✅ Test the binary: `./cert version`
+6. ✅ If adding new commands, update test count in `cmd/root_test.go`
 
 ## Debugging Tips
 
