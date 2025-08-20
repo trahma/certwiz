@@ -1,5 +1,7 @@
 # This is an example .goreleaser.yml file with some sensible defaults.
 # Make sure to check the documentation at https://goreleaser.com
+version: 2
+
 project_name: certwiz
 
 before:
@@ -89,9 +91,7 @@ changelog:
       order: 999
 
 release:
-  github:
-    owner: "{{ .Env.GITHUB_REPOSITORY_OWNER }}"
-    name: certwiz
+  name_template: "v{{.Version}}"
   
   header: |
     ## CertWiz {{ .Tag }}
@@ -148,7 +148,7 @@ brews:
       name: goreleaserbot
       email: goreleaserbot@users.noreply.github.com
     commit_msg_template: "Brew formula update for {{ .ProjectName }} version {{ .Tag }}"
-    folder: Formula
+    directory: Formula
     test: |
       system "#{bin}/cert", "version"
     install: |
