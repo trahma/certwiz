@@ -11,12 +11,12 @@ import (
 )
 
 var (
-	caCN       string
-	caOrg      string
-	caCountry  string
-	caDays     int
-	caKeySize  int
-	caOutput   string
+	caCN      string
+	caOrg     string
+	caCountry string
+	caDays    int
+	caKeySize int
+	caOutput  string
 )
 
 var caCmd = &cobra.Command{
@@ -60,10 +60,10 @@ Examples:
 
 		// Generate CA certificate
 		fmt.Println("🔐 Generating Certificate Authority...")
-		
+
 		certPath := filepath.Join(caOutput, sanitizeCAFilename(caCN)+"-ca.crt")
 		keyPath := filepath.Join(caOutput, sanitizeCAFilename(caCN)+"-ca.key")
-		
+
 		err := cert.GenerateCA(options, certPath, keyPath)
 		if err != nil {
 			return fmt.Errorf("failed to generate CA: %w", err)
@@ -85,7 +85,7 @@ Examples:
 		fmt.Println("  1. Distribute the CA certificate to clients that need to trust it")
 		fmt.Println("  2. Use 'cert sign' command to sign CSRs with this CA")
 		fmt.Println("  3. Keep the CA key secure and backed up")
-		
+
 		// Display the CA certificate details
 		fmt.Println()
 		fmt.Println("🔍 CA Certificate Details:")
@@ -107,7 +107,7 @@ func init() {
 	caCmd.Flags().IntVarP(&caDays, "days", "d", 3650, "Validity period in days (default 10 years)")
 	caCmd.Flags().IntVarP(&caKeySize, "key-size", "k", 4096, "RSA key size in bits")
 	caCmd.Flags().StringVarP(&caOutput, "output", "o", "", "Output directory for CA files")
-	
+
 	rootCmd.AddCommand(caCmd)
 }
 

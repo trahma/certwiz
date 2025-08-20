@@ -31,34 +31,34 @@ This command will:
 		}
 
 		fmt.Println("Checking for updates...")
-		
+
 		// Check current version
 		currentVersion := strings.TrimPrefix(version, "v")
 		fmt.Printf("Current version: v%s\n", currentVersion)
-		
+
 		// Download and run the installer script
 		fmt.Println("\nFetching latest version information...")
-		
+
 		// Use bash to download and execute the installer
 		installerURL := "https://raw.githubusercontent.com/trahma/certwiz/main/install.sh"
-		
+
 		// Prepare the bash command
 		var bashCmd *exec.Cmd
 		if forceUpdate {
 			// Force reinstall even if version is the same
-			bashCmd = exec.Command("bash", "-c", 
+			bashCmd = exec.Command("bash", "-c",
 				fmt.Sprintf("curl -sSL %s | bash -s -- --force", installerURL))
 		} else {
 			// Normal update - will check version and only update if newer
-			bashCmd = exec.Command("bash", "-c", 
+			bashCmd = exec.Command("bash", "-c",
 				fmt.Sprintf("curl -sSL %s | bash", installerURL))
 		}
-		
+
 		// Connect stdin, stdout, stderr so user can interact if needed
 		bashCmd.Stdin = os.Stdin
 		bashCmd.Stdout = os.Stdout
 		bashCmd.Stderr = os.Stderr
-		
+
 		// Run the installer
 		if err := bashCmd.Run(); err != nil {
 			fmt.Fprintf(os.Stderr, "Error running update: %v\n", err)

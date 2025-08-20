@@ -70,10 +70,10 @@ Examples:
 
 		// Generate CSR
 		fmt.Println("🔐 Generating Certificate Signing Request...")
-		
+
 		csrPath := filepath.Join(csrOutput, sanitizeFilename(csrCN)+".csr")
 		keyPath := filepath.Join(csrOutput, sanitizeFilename(csrCN)+".key")
-		
+
 		err := cert.GenerateCSR(options, csrPath, keyPath)
 		if err != nil {
 			return fmt.Errorf("failed to generate CSR: %w", err)
@@ -90,7 +90,7 @@ Examples:
 		fmt.Println("  1. Submit the CSR to your Certificate Authority")
 		fmt.Println("  2. Keep the private key secure - you'll need it with the signed certificate")
 		fmt.Println("  3. Once you receive the signed certificate, install it with the private key")
-		
+
 		// Optionally display the CSR details
 		fmt.Println()
 		fmt.Println("🔍 CSR Details:")
@@ -113,7 +113,7 @@ func init() {
 	csrCmd.Flags().StringSliceVar(&csrSANs, "san", []string{}, "Subject Alternative Name (can be used multiple times)")
 	csrCmd.Flags().IntVarP(&csrKeySize, "key-size", "k", 2048, "RSA key size in bits")
 	csrCmd.Flags().StringVarP(&csrOutput, "output", "o", "", "Output directory for CSR and key files")
-	
+
 	rootCmd.AddCommand(csrCmd)
 }
 
@@ -122,13 +122,13 @@ func displayCSRInfo(csrPath string) error {
 	if err != nil {
 		return err
 	}
-	
+
 	// Parse and display CSR info
 	info, err := cert.ParseCSR(data)
 	if err != nil {
 		return err
 	}
-	
+
 	ui.DisplayCSRInfo(info)
 	return nil
 }

@@ -9,25 +9,25 @@ import (
 
 // JSONCertificate represents certificate data in JSON format
 type JSONCertificate struct {
-	Subject            JSONSubject   `json:"subject"`
-	Issuer             JSONSubject   `json:"issuer"`
-	SerialNumber       string        `json:"serial_number"`
-	NotBefore          time.Time     `json:"not_before"`
-	NotAfter           time.Time     `json:"not_after"`
-	IsCA               bool          `json:"is_ca"`
-	IsExpired          bool          `json:"is_expired"`
-	DaysUntilExpiry    int           `json:"days_until_expiry"`
-	SignatureAlgorithm string        `json:"signature_algorithm"`
-	PublicKeyAlgorithm string        `json:"public_key_algorithm"`
-	PublicKeySize      int           `json:"public_key_size"`
-	DNSNames           []string      `json:"dns_names,omitempty"`
-	IPAddresses        []string      `json:"ip_addresses,omitempty"`
-	EmailAddresses     []string      `json:"email_addresses,omitempty"`
-	URIs               []string      `json:"uris,omitempty"`
-	KeyUsage           []string      `json:"key_usage,omitempty"`
-	ExtKeyUsage        []string      `json:"ext_key_usage,omitempty"`
-	Source             string        `json:"source,omitempty"`
-	Format             string        `json:"format,omitempty"`
+	Subject            JSONSubject       `json:"subject"`
+	Issuer             JSONSubject       `json:"issuer"`
+	SerialNumber       string            `json:"serial_number"`
+	NotBefore          time.Time         `json:"not_before"`
+	NotAfter           time.Time         `json:"not_after"`
+	IsCA               bool              `json:"is_ca"`
+	IsExpired          bool              `json:"is_expired"`
+	DaysUntilExpiry    int               `json:"days_until_expiry"`
+	SignatureAlgorithm string            `json:"signature_algorithm"`
+	PublicKeyAlgorithm string            `json:"public_key_algorithm"`
+	PublicKeySize      int               `json:"public_key_size"`
+	DNSNames           []string          `json:"dns_names,omitempty"`
+	IPAddresses        []string          `json:"ip_addresses,omitempty"`
+	EmailAddresses     []string          `json:"email_addresses,omitempty"`
+	URIs               []string          `json:"uris,omitempty"`
+	KeyUsage           []string          `json:"key_usage,omitempty"`
+	ExtKeyUsage        []string          `json:"ext_key_usage,omitempty"`
+	Source             string            `json:"source,omitempty"`
+	Format             string            `json:"format,omitempty"`
 	Chain              []JSONCertSummary `json:"chain,omitempty"`
 }
 
@@ -192,7 +192,7 @@ func subjectToJSON(subject interface{}) JSONSubject {
 
 func getKeyUsageStrings(usage x509.KeyUsage) []string {
 	var usages []string
-	
+
 	if usage&x509.KeyUsageDigitalSignature != 0 {
 		usages = append(usages, "Digital Signature")
 	}
@@ -220,13 +220,13 @@ func getKeyUsageStrings(usage x509.KeyUsage) []string {
 	if usage&x509.KeyUsageDecipherOnly != 0 {
 		usages = append(usages, "Decipher Only")
 	}
-	
+
 	return usages
 }
 
 func getExtKeyUsageStrings(usage []x509.ExtKeyUsage) []string {
 	var usages []string
-	
+
 	for _, u := range usage {
 		switch u {
 		case x509.ExtKeyUsageAny:
@@ -255,6 +255,6 @@ func getExtKeyUsageStrings(usage []x509.ExtKeyUsage) []string {
 			usages = append(usages, "Netscape Server Gated Crypto")
 		}
 	}
-	
+
 	return usages
 }

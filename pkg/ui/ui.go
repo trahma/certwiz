@@ -705,7 +705,7 @@ func DisplayCSRInfo(info *cert.CSRInfo) {
 
 	// Display the table
 	content := formatTable(table)
-	
+
 	// Get terminal width to constrain the panel
 	width, _, err := term.GetSize(0)
 	if err != nil || width <= 0 {
@@ -715,6 +715,6 @@ func DisplayCSRInfo(info *cert.CSRInfo) {
 	panel := panelStyle.Copy().
 		BorderForeground(cyan).
 		Width(width - 4)
-	
+
 	fmt.Println(panel.Render(content))
 }

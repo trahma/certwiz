@@ -23,10 +23,10 @@ func TestSignCommand(t *testing.T) {
 		Days:         365,
 		KeySize:      2048,
 	}
-	
+
 	caCertPath := filepath.Join(tmpDir, "ca.crt")
 	caKeyPath := filepath.Join(tmpDir, "ca.key")
-	
+
 	err = cert.GenerateCA(caOptions, caCertPath, caKeyPath)
 	if err != nil {
 		t.Fatalf("Failed to generate CA: %v", err)
@@ -40,10 +40,10 @@ func TestSignCommand(t *testing.T) {
 		SANs:         []string{"test.example.com", "www.test.example.com"},
 		KeySize:      2048,
 	}
-	
+
 	csrPath := filepath.Join(tmpDir, "test.csr")
 	keyPath := filepath.Join(tmpDir, "test.key")
-	
+
 	err = cert.GenerateCSR(csrOptions, csrPath, keyPath)
 	if err != nil {
 		t.Fatalf("Failed to generate CSR: %v", err)
@@ -56,7 +56,7 @@ func TestSignCommand(t *testing.T) {
 		signCAKey = caKeyPath
 		signDays = 365
 		signOutput = tmpDir
-		
+
 		err := signCmd.RunE(signCmd, []string{})
 		if err != nil {
 			t.Fatalf("Certificate signing failed: %v", err)
@@ -81,19 +81,19 @@ func TestSignCommand(t *testing.T) {
 
 		// Check subject matches CSR
 		if signedCert.Subject.CommonName != "test.example.com" {
-			t.Errorf("Certificate CN mismatch: got %s, expected test.example.com", 
+			t.Errorf("Certificate CN mismatch: got %s, expected test.example.com",
 				signedCert.Subject.CommonName)
 		}
 
 		// Check issuer matches CA
 		if signedCert.Issuer.CommonName != "Test CA" {
-			t.Errorf("Certificate issuer mismatch: got %s, expected Test CA", 
+			t.Errorf("Certificate issuer mismatch: got %s, expected Test CA",
 				signedCert.Issuer.CommonName)
 		}
 
 		// Check SANs
 		if len(signedCert.DNSNames) != 2 {
-			t.Errorf("Certificate SAN count mismatch: got %d, expected 2", 
+			t.Errorf("Certificate SAN count mismatch: got %d, expected 2",
 				len(signedCert.DNSNames))
 		}
 	})
@@ -106,10 +106,10 @@ func TestSignCommand(t *testing.T) {
 		signDays = 365
 		signOutput = tmpDir
 		signSANs = []string{"override.example.com", "IP:10.0.0.1"}
-		
+
 		// Use a different output name to avoid overwriting
 		certPath := filepath.Join(tmpDir, "test-override.crt")
-		
+
 		// Temporarily modify the sign command to output to a different file
 		options := cert.SignOptions{
 			CSRPath: csrPath,
@@ -118,7 +118,7 @@ func TestSignCommand(t *testing.T) {
 			Days:    365,
 			SANs:    signSANs,
 		}
-		
+
 		err := cert.SignCSR(options, certPath)
 		if err != nil {
 			t.Fatalf("Certificate signing with SAN override failed: %v", err)
@@ -132,12 +132,12 @@ func TestSignCommand(t *testing.T) {
 
 		// Check that SANs were overridden
 		if len(signedCert.DNSNames) != 1 || signedCert.DNSNames[0] != "override.example.com" {
-			t.Errorf("Certificate DNS SAN override failed: got %v, expected [override.example.com]", 
+			t.Errorf("Certificate DNS SAN override failed: got %v, expected [override.example.com]",
 				signedCert.DNSNames)
 		}
 
 		if len(signedCert.IPAddresses) != 1 || signedCert.IPAddresses[0].String() != "10.0.0.1" {
-			t.Errorf("Certificate IP SAN override failed: got %v, expected [10.0.0.1]", 
+			t.Errorf("Certificate IP SAN override failed: got %v, expected [10.0.0.1]",
 				signedCert.IPAddresses)
 		}
 	})
@@ -148,7 +148,7 @@ func TestSignCommand(t *testing.T) {
 		signCSR = ""
 		signCA = caCertPath
 		signCAKey = caKeyPath
-		
+
 		err := signCmd.RunE(signCmd, []string{})
 		if err == nil {
 			t.Error("Expected error for missing CSR, but got none")
@@ -158,7 +158,7 @@ func TestSignCommand(t *testing.T) {
 		signCSR = csrPath
 		signCA = ""
 		signCAKey = caKeyPath
-		
+
 		err = signCmd.RunE(signCmd, []string{})
 		if err == nil {
 			t.Error("Expected error for missing CA cert, but got none")
@@ -168,7 +168,7 @@ func TestSignCommand(t *testing.T) {
 		signCSR = csrPath
 		signCA = caCertPath
 		signCAKey = ""
-		
+
 		err = signCmd.RunE(signCmd, []string{})
 		if err == nil {
 			t.Error("Expected error for missing CA key, but got none")

@@ -54,11 +54,11 @@ Examples:
 
 		// Prepare options
 		options := cert.SignOptions{
-			CSRPath:   signCSR,
-			CACert:    signCA,
-			CAKey:     signCAKey,
-			Days:      signDays,
-			SANs:      processSANs(signSANs),
+			CSRPath: signCSR,
+			CACert:  signCA,
+			CAKey:   signCAKey,
+			Days:    signDays,
+			SANs:    processSANs(signSANs),
 		}
 
 		// Set output path
@@ -70,12 +70,12 @@ Examples:
 		csrBase := filepath.Base(signCSR)
 		csrBase = strings.TrimSuffix(csrBase, ".csr")
 		csrBase = strings.TrimSuffix(csrBase, ".req")
-		
+
 		certPath := filepath.Join(signOutput, csrBase+".crt")
 
 		// Sign the CSR
 		fmt.Println("🖊️  Signing Certificate Signing Request...")
-		
+
 		err := cert.SignCSR(options, certPath)
 		if err != nil {
 			return fmt.Errorf("failed to sign CSR: %w", err)
@@ -91,7 +91,7 @@ Examples:
 		fmt.Println("  1. Deliver the signed certificate to the requester")
 		fmt.Println("  2. The certificate should be used with the original private key from the CSR")
 		fmt.Println("  3. Install the certificate along with the CA certificate chain")
-		
+
 		// Display the signed certificate details
 		fmt.Println()
 		fmt.Println("🔍 Signed Certificate Details:")
@@ -113,6 +113,6 @@ func init() {
 	signCmd.Flags().IntVarP(&signDays, "days", "d", 365, "Validity period in days")
 	signCmd.Flags().StringVarP(&signOutput, "output", "o", "", "Output directory for signed certificate")
 	signCmd.Flags().StringSliceVar(&signSANs, "san", []string{}, "Subject Alternative Name (overrides CSR SANs if specified)")
-	
+
 	rootCmd.AddCommand(signCmd)
 }

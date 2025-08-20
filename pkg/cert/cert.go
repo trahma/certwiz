@@ -331,7 +331,7 @@ func GenerateCSR(options CSROptions, csrPath, keyPath string) error {
 	subject := pkix.Name{
 		CommonName: options.CommonName,
 	}
-	
+
 	if options.Organization != "" {
 		subject.Organization = []string{options.Organization}
 	}
@@ -463,7 +463,7 @@ func GenerateCA(options CAOptions, certPath, keyPath string) error {
 	subject := pkix.Name{
 		CommonName: options.CommonName,
 	}
-	
+
 	if options.Organization != "" {
 		subject.Organization = []string{options.Organization}
 	}
@@ -477,17 +477,17 @@ func GenerateCA(options CAOptions, certPath, keyPath string) error {
 		Subject:      subject,
 		NotBefore:    time.Now(),
 		NotAfter:     time.Now().AddDate(0, 0, options.Days),
-		
+
 		// CA specific settings
 		IsCA:                  true,
 		BasicConstraintsValid: true,
 		MaxPathLen:            -1, // No path length constraint
-		
+
 		// Key usage for CA
-		KeyUsage: x509.KeyUsageCertSign | 
-		          x509.KeyUsageCRLSign | 
-		          x509.KeyUsageDigitalSignature,
-		
+		KeyUsage: x509.KeyUsageCertSign |
+			x509.KeyUsageCRLSign |
+			x509.KeyUsageDigitalSignature,
+
 		// Extended key usage (optional for CA, but can be useful)
 		ExtKeyUsage: []x509.ExtKeyUsage{
 			x509.ExtKeyUsageServerAuth,
@@ -623,7 +623,7 @@ func SignCSR(options SignOptions, certPath string) error {
 		Subject:      csr.Subject,
 		NotBefore:    time.Now(),
 		NotAfter:     time.Now().AddDate(0, 0, options.Days),
-		
+
 		// Standard certificate settings
 		KeyUsage: x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment,
 		ExtKeyUsage: []x509.ExtKeyUsage{

@@ -21,7 +21,7 @@ func TestCACommand(t *testing.T) {
 		caOutput = tmpDir
 		caKeySize = 2048 // Use smaller key for faster tests
 		caDays = 365
-		
+
 		// Run the command
 		err := caCmd.RunE(caCmd, []string{})
 		if err != nil {
@@ -70,7 +70,7 @@ func TestCACommand(t *testing.T) {
 		caOutput = tmpDir
 		caKeySize = 2048
 		caDays = 3650
-		
+
 		err := caCmd.RunE(caCmd, []string{})
 		if err != nil {
 			t.Fatalf("CA generation with org details failed: %v", err)
@@ -84,13 +84,13 @@ func TestCACommand(t *testing.T) {
 
 		// Check organization in subject
 		if len(caCert.Subject.Organization) == 0 || caCert.Subject.Organization[0] != "Test Company" {
-			t.Errorf("CA certificate organization mismatch: got %v, expected [Test Company]", 
+			t.Errorf("CA certificate organization mismatch: got %v, expected [Test Company]",
 				caCert.Subject.Organization)
 		}
 
 		// Check country in subject
 		if len(caCert.Subject.Country) == 0 || caCert.Subject.Country[0] != "US" {
-			t.Errorf("CA certificate country mismatch: got %v, expected [US]", 
+			t.Errorf("CA certificate country mismatch: got %v, expected [US]",
 				caCert.Subject.Country)
 		}
 	})
@@ -99,7 +99,7 @@ func TestCACommand(t *testing.T) {
 	t.Run("MissingCN", func(t *testing.T) {
 		caCN = ""
 		caOutput = tmpDir
-		
+
 		err := caCmd.RunE(caCmd, []string{})
 		if err == nil {
 			t.Error("Expected error for missing common name, but got none")

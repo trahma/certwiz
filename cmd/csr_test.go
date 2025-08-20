@@ -20,7 +20,7 @@ func TestCSRCommand(t *testing.T) {
 		csrOutput = tmpDir
 		csrKeySize = 2048
 		csrSANs = []string{}
-		
+
 		// Run the command
 		err := csrCmd.RunE(csrCmd, []string{})
 		if err != nil {
@@ -46,7 +46,7 @@ func TestCSRCommand(t *testing.T) {
 		csrOutput = tmpDir
 		csrKeySize = 2048
 		csrSANs = []string{"multi.example.com", "www.multi.example.com", "IP:192.168.1.1"}
-		
+
 		err := csrCmd.RunE(csrCmd, []string{})
 		if err != nil {
 			t.Fatalf("CSR generation with SANs failed: %v", err)
@@ -67,7 +67,7 @@ func TestCSRCommand(t *testing.T) {
 		csrState = "California"
 		csrOutput = tmpDir
 		csrKeySize = 2048
-		
+
 		err := csrCmd.RunE(csrCmd, []string{})
 		if err != nil {
 			t.Fatalf("CSR generation with org details failed: %v", err)
@@ -84,7 +84,7 @@ func TestCSRCommand(t *testing.T) {
 	t.Run("MissingCN", func(t *testing.T) {
 		csrCN = ""
 		csrOutput = tmpDir
-		
+
 		err := csrCmd.RunE(csrCmd, []string{})
 		if err == nil {
 			t.Error("Expected error for missing common name, but got none")

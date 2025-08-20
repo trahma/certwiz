@@ -12,7 +12,6 @@ import (
 	"time"
 )
 
-
 func TestInspectFile(t *testing.T) {
 	tests := []struct {
 		name        string

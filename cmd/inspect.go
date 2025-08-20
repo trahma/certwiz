@@ -55,7 +55,7 @@ Examples:
 				}
 				os.Exit(1)
 			}
-			
+
 			if jsonOutput {
 				jsonCert := certificate.ToJSON()
 				jsonData, err := json.MarshalIndent(jsonCert, "", "  ")
@@ -99,7 +99,7 @@ Examples:
 
 			if jsonOutput {
 				jsonCert := certificate.ToJSON()
-				
+
 				// Add chain if requested
 				if inspectChain && len(chain) > 0 {
 					for _, c := range chain {
@@ -113,7 +113,7 @@ Examples:
 						})
 					}
 				}
-				
+
 				jsonData, err := json.MarshalIndent(jsonCert, "", "  ")
 				if err != nil {
 					ui.ShowError(fmt.Sprintf("Failed to marshal JSON: %v", err))
