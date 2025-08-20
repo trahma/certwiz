@@ -54,7 +54,9 @@
       "Bash(gh release list:*)",
       "Bash(openssl req:*)",
       "Bash(git checkout:*)",
-      "Bash(openssl verify:*)"
+      "Bash(openssl verify:*)",
+      "Bash(CI=true go test -v ./pkg/ui/...)",
+      "Bash(CI=true go test -v -race ./...)"
     ],
     "deny": [],
     "ask": [],

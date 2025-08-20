@@ -6,6 +6,7 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -53,11 +54,57 @@ var (
 	valueStyle = lipgloss.NewStyle().
 			Foreground(white)
 
-	panelStyle = lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
+	panelStyle = getPanelStyle()
+)
+
+// getPanelStyle returns the appropriate panel style based on environment
+func getPanelStyle() lipgloss.Style {
+	// Check if we're in a CI environment or terminal doesn't support Unicode
+	if isCI() || !supportsUnicode() {
+		// Use ASCII borders for CI environments
+		return lipgloss.NewStyle().
+			Border(lipgloss.NormalBorder()).
 			BorderForeground(cyan).
 			Padding(1, 2)
-)
+	}
+	// Use rounded borders for regular terminals
+	return lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(cyan).
+		Padding(1, 2)
+}
+
+// isCI checks if we're running in a CI environment
+func isCI() bool {
+	// Check common CI environment variables
+	ciVars := []string{"CI", "CONTINUOUS_INTEGRATION", "GITHUB_ACTIONS", "GITLAB_CI", "JENKINS", "CIRCLECI"}
+	for _, v := range ciVars {
+		if os.Getenv(v) != "" {
+			return true
+		}
+	}
+	return false
+}
+
+// supportsUnicode checks if the terminal supports Unicode
+func supportsUnicode() bool {
+	// Check TERM environment variable
+	term := os.Getenv("TERM")
+	if term == "dumb" || term == "" {
+		return false
+	}
+	
+	// Check LANG/LC_ALL for UTF-8 support
+	lang := os.Getenv("LANG")
+	if lang == "" {
+		lang = os.Getenv("LC_ALL")
+	}
+	if lang != "" && !strings.Contains(strings.ToLower(lang), "utf") {
+		return false
+	}
+	
+	return true
+}
 
 // DisplayCertificate shows certificate information in a formatted table
 func DisplayCertificate(cert *cert.Certificate, showFull bool) {
@@ -122,7 +169,7 @@ func DisplayCertificate(cert *cert.Certificate, showFull bool) {
 
 	// Constrain panel to terminal width
 	// The panel adds borders and padding, so we need to account for that
-	panel := panelStyle.Copy().
+	panel := getPanelStyle().
 		BorderForeground(borderColor).
 		Width(width - 4) // Account for terminal margins
 	fmt.Println(panel.Render(content))
@@ -134,7 +181,11 @@ func DisplayCertificate(cert *cert.Certificate, showFull bool) {
 
 // DisplayGenerationResult shows the result of certificate generation
 func DisplayGenerationResult(certPath, keyPath string) {
-	fmt.Println(successStyle.Render("✓ Certificate generated successfully!"))
+	checkmark := "✓"
+	if isCI() {
+		checkmark = "[OK]"
+	}
+	fmt.Println(successStyle.Render(fmt.Sprintf("%s Certificate generated successfully!", checkmark)))
 	fmt.Println()
 
 	table := [][]string{
@@ -143,12 +194,16 @@ func DisplayGenerationResult(certPath, keyPath string) {
 	}
 
 	content := formatTable(table)
-	fmt.Println(panelStyle.Render(content))
+	fmt.Println(getPanelStyle().Render(content))
 }
 
 // DisplayConversionResult shows the result of certificate conversion
 func DisplayConversionResult(inputPath, outputPath, fromFormat, toFormat string) {
-	fmt.Println(successStyle.Render(fmt.Sprintf("✓ Converted from %s to %s", strings.ToUpper(fromFormat), strings.ToUpper(toFormat))))
+	checkmark := "✓"
+	if isCI() {
+		checkmark = "[OK]"
+	}
+	fmt.Println(successStyle.Render(fmt.Sprintf("%s Converted from %s to %s", checkmark, strings.ToUpper(fromFormat), strings.ToUpper(toFormat))))
 	fmt.Println()
 
 	table := [][]string{
@@ -157,7 +212,7 @@ func DisplayConversionResult(inputPath, outputPath, fromFormat, toFormat string)
 	}
 
 	content := formatTable(table)
-	fmt.Println(panelStyle.Render(content))
+	fmt.Println(getPanelStyle().Render(content))
 }
 
 // DisplayVerificationResult shows certificate verification results
@@ -167,27 +222,41 @@ func DisplayVerificationResult(result *cert.VerificationResult) {
 	fmt.Println()
 
 	// Overall status
+	checkmark := "✓"
+	crossMark := "✗"
+	if isCI() {
+		checkmark = "[OK]"
+		crossMark = "[FAIL]"
+	}
 	if result.IsValid {
-		fmt.Println(successStyle.Render("✓ Certificate is valid"))
+		fmt.Println(successStyle.Render(fmt.Sprintf("%s Certificate is valid", checkmark)))
 	} else {
-		fmt.Println(errorStyle.Render("✗ Certificate validation failed"))
+		fmt.Println(errorStyle.Render(fmt.Sprintf("%s Certificate validation failed", crossMark)))
 	}
 	fmt.Println()
 
 	// Show errors
 	if len(result.Errors) > 0 {
+		crossMark := "✗"
+		if isCI() {
+			crossMark = "[X]"
+		}
 		fmt.Println(errorStyle.Render("Errors:"))
 		for _, err := range result.Errors {
-			fmt.Printf("  %s %s\n", errorStyle.Render("✗"), err)
+			fmt.Printf("  %s %s\n", errorStyle.Render(crossMark), err)
 		}
 		fmt.Println()
 	}
 
 	// Show warnings
 	if len(result.Warnings) > 0 {
+		warnSymbol := "⚠"
+		if isCI() {
+			warnSymbol = "[!]"
+		}
 		fmt.Println(warningStyle.Render("Warnings:"))
 		for _, warning := range result.Warnings {
-			fmt.Printf("  %s %s\n", warningStyle.Render("⚠"), warning)
+			fmt.Printf("  %s %s\n", warningStyle.Render(warnSymbol), warning)
 		}
 		fmt.Println()
 	}
@@ -199,12 +268,18 @@ func DisplayVerificationResult(result *cert.VerificationResult) {
 	checks := [][]string{}
 
 	// Date checks
+	checkmark2 := "✓"
+	crossMark2 := "✗"
+	if isCI() {
+		checkmark2 = "[OK]"
+		crossMark2 = "[X]"
+	}
 	if cert.NotBefore.After(now) {
-		checks = append(checks, []string{"✗", "Not yet valid", errorStyle.Render("FAIL")})
+		checks = append(checks, []string{crossMark2, "Not yet valid", errorStyle.Render("FAIL")})
 	} else if cert.NotAfter.Before(now) {
-		checks = append(checks, []string{"✗", "Expired", errorStyle.Render("FAIL")})
+		checks = append(checks, []string{crossMark2, "Expired", errorStyle.Render("FAIL")})
 	} else {
-		checks = append(checks, []string{"✓", "Date validity", successStyle.Render("PASS")})
+		checks = append(checks, []string{checkmark2, "Date validity", successStyle.Render("PASS")})
 	}
 
 	if len(checks) > 0 {
@@ -421,7 +496,7 @@ func DisplayCertificateChain(chain []*cert.Certificate) {
 			width = 80
 		}
 
-		panel := panelStyle.Copy().
+		panel := getPanelStyle().
 			BorderForeground(borderColor).
 			Width(width - 4)
 		fmt.Println(panel.Render(content))
@@ -468,15 +543,23 @@ func displayParsedExtensions(cert *x509.Certificate) {
 	// Basic Constraints
 	if cert.BasicConstraintsValid {
 		fmt.Println(keyStyle.Render("Basic Constraints") + getCriticalLabel(isExtensionCritical(cert, "2.5.29.19")))
+		checkmark := "✓"
+		crossMark := "✗"
+		arrow := "→"
+		if isCI() {
+			checkmark = "[OK]"
+			crossMark = "[X]"
+			arrow = "->"
+		}
 		if cert.IsCA {
-			fmt.Printf("  %s Certificate Authority: %s\n", successStyle.Render("✓"), successStyle.Render("Yes"))
+			fmt.Printf("  %s Certificate Authority: %s\n", successStyle.Render(checkmark), successStyle.Render("Yes"))
 			if cert.MaxPathLen >= 0 {
-				fmt.Printf("  %s Max Path Length: %d\n", valueStyle.Render("→"), cert.MaxPathLen)
+				fmt.Printf("  %s Max Path Length: %d\n", valueStyle.Render(arrow), cert.MaxPathLen)
 			} else if cert.MaxPathLenZero {
-				fmt.Printf("  %s Max Path Length: %d\n", valueStyle.Render("→"), 0)
+				fmt.Printf("  %s Max Path Length: %d\n", valueStyle.Render(arrow), 0)
 			}
 		} else {
-			fmt.Printf("  %s Certificate Authority: %s\n", valueStyle.Render("✗"), valueStyle.Render("No"))
+			fmt.Printf("  %s Certificate Authority: %s\n", valueStyle.Render(crossMark), valueStyle.Render("No"))
 		}
 		fmt.Println()
 	}
@@ -484,9 +567,13 @@ func displayParsedExtensions(cert *x509.Certificate) {
 	// Subject Alternative Names (skip if already shown in main display)
 	// We show a summary here since full list is in main display
 	if len(cert.DNSNames) > 0 || len(cert.IPAddresses) > 0 || len(cert.EmailAddresses) > 0 || len(cert.URIs) > 0 {
+		arrow := "→"
+		if isCI() {
+			arrow = "->"
+		}
 		fmt.Println(keyStyle.Render("Subject Alternative Name") + getCriticalLabel(isExtensionCritical(cert, "2.5.29.17")))
 		sanCount := len(cert.DNSNames) + len(cert.IPAddresses) + len(cert.EmailAddresses) + len(cert.URIs)
-		fmt.Printf("  %s %d SANs (", valueStyle.Render("→"), sanCount)
+		fmt.Printf("  %s %d SANs (", valueStyle.Render(arrow), sanCount)
 		parts := []string{}
 		if len(cert.DNSNames) > 0 {
 			parts = append(parts, fmt.Sprintf("%d DNS", len(cert.DNSNames)))
@@ -506,17 +593,23 @@ func displayParsedExtensions(cert *x509.Certificate) {
 
 	// Authority Info Access
 	if len(cert.OCSPServer) > 0 || len(cert.IssuingCertificateURL) > 0 {
+		arrow := "→"
+		link := "🔗"
+		if isCI() {
+			arrow = "->"
+			link = "[URL]"
+		}
 		fmt.Println(keyStyle.Render("Authority Info Access"))
 		if len(cert.OCSPServer) > 0 {
-			fmt.Printf("  %s OCSP:\n", valueStyle.Render("→"))
+			fmt.Printf("  %s OCSP:\n", valueStyle.Render(arrow))
 			for _, url := range cert.OCSPServer {
-				fmt.Printf("    %s %s\n", keyStyle.Render("🔗"), url)
+				fmt.Printf("    %s %s\n", keyStyle.Render(link), url)
 			}
 		}
 		if len(cert.IssuingCertificateURL) > 0 {
-			fmt.Printf("  %s CA Issuers:\n", valueStyle.Render("→"))
+			fmt.Printf("  %s CA Issuers:\n", valueStyle.Render(arrow))
 			for _, url := range cert.IssuingCertificateURL {
-				fmt.Printf("    %s %s\n", keyStyle.Render("🔗"), url)
+				fmt.Printf("    %s %s\n", keyStyle.Render(link), url)
 			}
 		}
 		fmt.Println()
@@ -524,19 +617,27 @@ func displayParsedExtensions(cert *x509.Certificate) {
 
 	// CRL Distribution Points
 	if len(cert.CRLDistributionPoints) > 0 {
+		link := "🔗"
+		if isCI() {
+			link = "[URL]"
+		}
 		fmt.Println(keyStyle.Render("CRL Distribution Points"))
 		for _, url := range cert.CRLDistributionPoints {
-			fmt.Printf("  %s %s\n", keyStyle.Render("🔗"), url)
+			fmt.Printf("  %s %s\n", keyStyle.Render(link), url)
 		}
 		fmt.Println()
 	}
 
 	// Certificate Policies
 	if len(cert.PolicyIdentifiers) > 0 {
+		arrow := "→"
+		if isCI() {
+			arrow = "->"
+		}
 		fmt.Println(keyStyle.Render("Certificate Policies"))
 		for _, oid := range cert.PolicyIdentifiers {
 			policyName := getPolicyName(oid.String())
-			fmt.Printf("  %s %s\n", valueStyle.Render("→"), policyName)
+			fmt.Printf("  %s %s\n", valueStyle.Render(arrow), policyName)
 		}
 		fmt.Println()
 	}
@@ -544,25 +645,28 @@ func displayParsedExtensions(cert *x509.Certificate) {
 
 // displayKeyUsage shows the key usage flags
 func displayKeyUsage(usage x509.KeyUsage) {
+	checkmark := "✓"
+	if isCI() {
+		checkmark = "[OK]"
+	}
 	usages := []struct {
 		flag x509.KeyUsage
 		name string
-		icon string
 	}{
-		{x509.KeyUsageDigitalSignature, "Digital Signature", "✓"},
-		{x509.KeyUsageContentCommitment, "Content Commitment", "✓"},
-		{x509.KeyUsageKeyEncipherment, "Key Encipherment", "✓"},
-		{x509.KeyUsageDataEncipherment, "Data Encipherment", "✓"},
-		{x509.KeyUsageKeyAgreement, "Key Agreement", "✓"},
-		{x509.KeyUsageCertSign, "Certificate Signing", "✓"},
-		{x509.KeyUsageCRLSign, "CRL Signing", "✓"},
-		{x509.KeyUsageEncipherOnly, "Encipher Only", "✓"},
-		{x509.KeyUsageDecipherOnly, "Decipher Only", "✓"},
+		{x509.KeyUsageDigitalSignature, "Digital Signature"},
+		{x509.KeyUsageContentCommitment, "Content Commitment"},
+		{x509.KeyUsageKeyEncipherment, "Key Encipherment"},
+		{x509.KeyUsageDataEncipherment, "Data Encipherment"},
+		{x509.KeyUsageKeyAgreement, "Key Agreement"},
+		{x509.KeyUsageCertSign, "Certificate Signing"},
+		{x509.KeyUsageCRLSign, "CRL Signing"},
+		{x509.KeyUsageEncipherOnly, "Encipher Only"},
+		{x509.KeyUsageDecipherOnly, "Decipher Only"},
 	}
 
 	for _, u := range usages {
 		if usage&u.flag != 0 {
-			fmt.Printf("  %s %s\n", successStyle.Render(u.icon), u.name)
+			fmt.Printf("  %s %s\n", successStyle.Render(checkmark), u.name)
 		}
 	}
 }
@@ -586,14 +690,20 @@ func displayExtendedKeyUsage(cert *x509.Certificate) {
 		x509.ExtKeyUsageMicrosoftKernelCodeSigning:     "Microsoft Kernel Code Signing",
 	}
 
+	checkmark := "✓"
+	arrow := "→"
+	if isCI() {
+		checkmark = "[OK]"
+		arrow = "->"
+	}
 	for _, usage := range cert.ExtKeyUsage {
 		if name, ok := usageNames[usage]; ok {
-			fmt.Printf("  %s %s\n", successStyle.Render("✓"), name)
+			fmt.Printf("  %s %s\n", successStyle.Render(checkmark), name)
 		}
 	}
 
 	for _, oid := range cert.UnknownExtKeyUsage {
-		fmt.Printf("  %s %s\n", valueStyle.Render("→"), oid.String())
+		fmt.Printf("  %s %s\n", valueStyle.Render(arrow), oid.String())
 	}
 }
 
@@ -642,11 +752,15 @@ func displayUnparsedExtensions(cert *x509.Certificate) {
 			if n, ok := oidNames[name]; ok {
 				name = n
 			}
+			arrow := "→"
+			if isCI() {
+				arrow = "->"
+			}
 			critical := ""
 			if ext.Critical {
 				critical = errorStyle.Render(" [CRITICAL]")
 			}
-			fmt.Printf("  %s %s%s\n", valueStyle.Render("→"), name, critical)
+			fmt.Printf("  %s %s%s\n", valueStyle.Render(arrow), name, critical)
 		}
 	}
 }
@@ -712,7 +826,7 @@ func DisplayCSRInfo(info *cert.CSRInfo) {
 		width = 80
 	}
 
-	panel := panelStyle.Copy().
+	panel := getPanelStyle().
 		BorderForeground(cyan).
 		Width(width - 4)
 
