@@ -98,7 +98,7 @@ func InspectURLWithChain(targetURL string, port int) (*Certificate, []*Certifica
 	serverCert := &Certificate{
 		Certificate:     certs[0],
 		Source:          u.String(),
-		Format:          "DER",
+		Format:          FormatDER,
 		IsExpired:       certs[0].NotAfter.Before(time.Now()),
 		DaysUntilExpiry: int(time.Until(certs[0].NotAfter).Hours() / 24),
 	}
@@ -109,7 +109,7 @@ func InspectURLWithChain(targetURL string, port int) (*Certificate, []*Certifica
 		chainCert := &Certificate{
 			Certificate:     certs[i],
 			Source:          fmt.Sprintf("Chain[%d]", i),
-			Format:          "DER",
+			Format:          FormatDER,
 			IsExpired:       certs[i].NotAfter.Before(time.Now()),
 			DaysUntilExpiry: int(time.Until(certs[i].NotAfter).Hours() / 24),
 		}
@@ -282,7 +282,7 @@ func parseCertificate(data []byte) (*x509.Certificate, string, error) {
 	// Try PEM first
 	if block, _ := pem.Decode(data); block != nil {
 		cert, err := x509.ParseCertificate(block.Bytes)
-		return cert, "PEM", err
+		return cert, FormatPEM, err
 	}
 
 	// Try DER
@@ -291,7 +291,7 @@ func parseCertificate(data []byte) (*x509.Certificate, string, error) {
 		return nil, "", fmt.Errorf("failed to parse as PEM or DER: %w", err)
 	}
 	
-	return cert, "DER", nil
+	return cert, FormatDER, nil
 }
 
 // GenerateOptions contains options for certificate generation

@@ -35,7 +35,7 @@ Examples:
 	Args: cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		target := args[0]
-		
+
 		// Determine if target is a file or URL
 		if _, err := os.Stat(target); err == nil {
 			// It's a file
@@ -48,7 +48,7 @@ Examples:
 		} else {
 			// It's a URL/hostname
 			port := inspectPort
-			
+
 			// Extract port from target if specified
 			if strings.Contains(target, ":") && !strings.HasPrefix(target, "http") {
 				parts := strings.Split(target, ":")
@@ -59,14 +59,14 @@ Examples:
 					}
 				}
 			}
-			
+
 			cert, chain, err := cert.InspectURLWithChain(target, port)
 			if err != nil {
 				ui.ShowError(err.Error())
 				os.Exit(1)
 			}
 			ui.DisplayCertificate(cert, inspectFull)
-			
+
 			// Display chain if requested
 			if inspectChain && len(chain) > 0 {
 				ui.DisplayCertificateChain(chain)

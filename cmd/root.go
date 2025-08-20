@@ -53,7 +53,7 @@ func Execute() error {
 func init() {
 	// Add version flag
 	rootCmd.Flags().BoolVarP(&versionFlag, "version", "v", false, "Print version information")
-	
+
 	// Add subcommands
 	rootCmd.AddCommand(inspectCmd)
 	rootCmd.AddCommand(generateCmd)
@@ -69,4 +69,3 @@ var versionCmd = &cobra.Command{
 		fmt.Printf("cert version %s\n", version)
 	},
 }
-

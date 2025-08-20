@@ -9,45 +9,45 @@ import (
 
 func TestGenerateCommand(t *testing.T) {
 	tests := []struct {
-		name           string
-		args           []string
-		wantErr        bool
-		checkFiles     []string
+		name       string
+		args       []string
+		wantErr    bool
+		checkFiles []string
 	}{
 		{
-			name: "Generate basic certificate",
-			args: []string{"generate", "--cn", "test.local"},
-			wantErr: false,
+			name:       "Generate basic certificate",
+			args:       []string{"generate", "--cn", "test.local"},
+			wantErr:    false,
 			checkFiles: []string{"test.local.crt", "test.local.key"},
 		},
 		{
-			name: "Generate with custom days",
-			args: []string{"generate", "--cn", "test30.local", "--days", "30"},
-			wantErr: false,
+			name:       "Generate with custom days",
+			args:       []string{"generate", "--cn", "test30.local", "--days", "30"},
+			wantErr:    false,
 			checkFiles: []string{"test30.local.crt", "test30.local.key"},
 		},
 		{
-			name: "Generate with SANs",
-			args: []string{"generate", "--cn", "multi.local", "--san", "alt1.local", "--san", "alt2.local"},
-			wantErr: false,
+			name:       "Generate with SANs",
+			args:       []string{"generate", "--cn", "multi.local", "--san", "alt1.local", "--san", "alt2.local"},
+			wantErr:    false,
 			checkFiles: []string{"multi.local.crt", "multi.local.key"},
 		},
 		{
-			name: "Generate with custom key size",
-			args: []string{"generate", "--cn", "strong.local", "--key-size", "4096"},
-			wantErr: false,
+			name:       "Generate with custom key size",
+			args:       []string{"generate", "--cn", "strong.local", "--key-size", "4096"},
+			wantErr:    false,
 			checkFiles: []string{"strong.local.crt", "strong.local.key"},
 		},
 		{
-			name: "Generate with custom output directory",
-			args: []string{"generate", "--cn", "custom.local", "--output", "custom_dir"},
-			wantErr: false,
+			name:       "Generate with custom output directory",
+			args:       []string{"generate", "--cn", "custom.local", "--output", "custom_dir"},
+			wantErr:    false,
 			checkFiles: []string{"custom_dir/custom.local.crt", "custom_dir/custom.local.key"},
 		},
 		// Skipping "Generate with no arguments" test because os.Exit(1) terminates test process
 		{
-			name: "Generate help",
-			args: []string{"generate", "--help"},
+			name:    "Generate help",
+			args:    []string{"generate", "--help"},
 			wantErr: false,
 		},
 	}
@@ -69,7 +69,7 @@ func TestGenerateCommand(t *testing.T) {
 
 			// Reset the generateCmd flags
 			generateCmd.Flags().Set("cn", "")
-			
+
 			// Create new root command for each test
 			cmd := rootCmd
 			cmd.SetArgs(tt.args)

@@ -62,7 +62,7 @@ var (
 
 // DisplayCertificate shows certificate information in a formatted table
 func DisplayCertificate(cert *cert.Certificate, showFull bool) {
-	title := fmt.Sprintf("Certificate Information")
+	title := "Certificate Information"
 	if cert.Source != "" {
 		if strings.HasPrefix(cert.Source, "http") {
 			title = fmt.Sprintf("Certificate for %s", cert.Source)
