@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.8] - 2025-08-20
+
+### Fixed
+- **Critical fix for macOS auto-update functionality**
+  - Fixed SIGKILL issue when running `cert update` on macOS
+  - Installer now uses atomic move operations for self-updates
+  - Update command uses syscall.Exec to break process inheritance chain
+  - Clears macOS extended attributes (com.apple.provenance) that prevent execution
+- **Improved update reliability**
+  - Downloads installer to temp file instead of piping directly
+  - Better handling of running binary replacement
+  - Fallback mechanisms for compatibility
+
+### Changed
+- Removed duplicate release workflow (now using only goreleaser)
+- Enhanced installer script with self-update detection
+
 ## [0.1.7] - 2025-08-20
 
 ### Fixed
@@ -122,6 +139,7 @@ All features from v0.1.6 are included in this release.
 - Binary named `cert` for ease of use
 - Project name remains `certwiz`
 
+[0.1.8]: https://github.com/trahma/certwiz/releases/tag/v0.1.8
 [0.1.7]: https://github.com/trahma/certwiz/releases/tag/v0.1.7
 [0.1.6]: https://github.com/trahma/certwiz/releases/tag/v0.1.6
 [0.1.5]: https://github.com/trahma/certwiz/releases/tag/v0.1.5

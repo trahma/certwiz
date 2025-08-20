@@ -65,7 +65,10 @@
       "Bash(gh release delete:*)",
       "Bash(github:*)",
       "Bash(gh release view:*)",
-      "Bash(gh run view:*)"
+      "Bash(gh run view:*)",
+      "Bash(git pull:*)",
+      "WebSearch",
+      "WebFetch(domain:gist.github.com)"
     ],
     "deny": [],
     "ask": [],
