@@ -61,7 +61,11 @@
       "Bash(CI=true go test -v ./cmd/...)",
       "Bash(CI=true go test ./...)",
       "Bash(CI=true go test ./cmd/...)",
-      "Bash(/dev/null)"
+      "Bash(/dev/null)",
+      "Bash(gh release delete:*)",
+      "Bash(github:*)",
+      "Bash(gh release view:*)",
+      "Bash(gh run view:*)"
     ],
     "deny": [],
     "ask": [],
