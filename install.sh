@@ -288,7 +288,7 @@ download_binary() {
     info "URL: ${download_url}" >&2
     
     # Download the archive
-    if ! curl -L --fail --progress-bar -o "${temp_dir}/${archive_name}" "${download_url}" 2>&1; then
+    if ! curl -L --fail --progress-bar -o "${temp_dir}/${archive_name}" "${download_url}"; then
         error "Failed to download binary"
         error "Please check if the release exists for your platform: ${os}/${arch}"
         rm -rf "${temp_dir}"
@@ -297,25 +297,34 @@ download_binary() {
     
     # Extract the archive
     info "Extracting archive..." >&2
-    if ! tar -xzf "${temp_dir}/${archive_name}" -C "${temp_dir}" 2>&1; then
+    if ! tar -xzf "${temp_dir}/${archive_name}" -C "${temp_dir}"; then
         error "Failed to extract archive"
         rm -rf "${temp_dir}"
         exit 1
     fi
     
-    # Find the binary (it's just named "cert" or "cert.exe" in the archive)
+    # Find the binary - it could be named "cert", "cert.exe", or "cert-OS-ARCH"
     local binary_path="${temp_dir}/${BINARY_NAME}"
     if [[ "${os}" == "windows" ]]; then
         binary_path="${temp_dir}/${BINARY_NAME}.exe"
     fi
     
+    # Check for various naming conventions
     if [[ ! -f "${binary_path}" ]]; then
-        # List what's in the temp dir for debugging
-        info "Looking for binary in: ${temp_dir}"
-        ls -la "${temp_dir}" >&2
-        error "Binary not found in archive (expected: ${binary_path})"
-        rm -rf "${temp_dir}"
-        exit 1
+        # Try with OS-ARCH suffix
+        binary_path="${temp_dir}/${binary_name}"
+        if [[ ! -f "${binary_path}" ]]; then
+            # Try finding any executable named cert*
+            binary_path=$(find "${temp_dir}" -name "cert*" -type f -perm +111 | head -1)
+            if [[ -z "${binary_path}" ]] || [[ ! -f "${binary_path}" ]]; then
+                # List what's in the temp dir for debugging
+                info "Looking for binary in: ${temp_dir}"
+                ls -la "${temp_dir}" >&2
+                error "Binary not found in archive"
+                rm -rf "${temp_dir}"
+                exit 1
+            fi
+        fi
     fi
     
     echo "${binary_path}"
