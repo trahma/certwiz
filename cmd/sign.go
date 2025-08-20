@@ -74,7 +74,7 @@ Examples:
 		certPath := filepath.Join(signOutput, csrBase+".crt")
 
 		// Sign the CSR
-		fmt.Println("🖊️  Signing Certificate Signing Request...")
+		fmt.Printf("%s Signing Certificate Signing Request...\n", getEmoji("🖊️", "[SIGN]"))
 
 		err := cert.SignCSR(options, certPath)
 		if err != nil {
@@ -84,17 +84,17 @@ Examples:
 		// Display success message
 		ui.ShowSuccess("Certificate signed successfully!")
 		fmt.Println()
-		fmt.Println("📁 Certificate created:")
-		fmt.Printf("  📜 Certificate: %s\n", certPath)
+		fmt.Printf("%s Certificate created:\n", getEmoji("📁", "[FILES]"))
+		fmt.Printf("  %s Certificate: %s\n", getEmoji("📜", "[CERT]"), certPath)
 		fmt.Println()
-		fmt.Println("📋 Next steps:")
+		fmt.Printf("%s Next steps:\n", getEmoji("📋", "[NEXT]"))
 		fmt.Println("  1. Deliver the signed certificate to the requester")
 		fmt.Println("  2. The certificate should be used with the original private key from the CSR")
 		fmt.Println("  3. Install the certificate along with the CA certificate chain")
 
 		// Display the signed certificate details
 		fmt.Println()
-		fmt.Println("🔍 Signed Certificate Details:")
+		fmt.Printf("%s Signed Certificate Details:\n", getEmoji("🔍", "[INFO]"))
 		signedCert, err := cert.InspectFile(certPath)
 		if err != nil {
 			ui.ShowInfo(fmt.Sprintf("Could not display certificate details: %v", err))

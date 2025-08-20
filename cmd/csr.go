@@ -69,7 +69,7 @@ Examples:
 		}
 
 		// Generate CSR
-		fmt.Println("🔐 Generating Certificate Signing Request...")
+		fmt.Printf("%s Generating Certificate Signing Request...\n", getEmoji("🔐", "[CSR]"))
 
 		csrPath := filepath.Join(csrOutput, sanitizeFilename(csrCN)+".csr")
 		keyPath := filepath.Join(csrOutput, sanitizeFilename(csrCN)+".key")
@@ -82,18 +82,18 @@ Examples:
 		// Display success message
 		ui.ShowSuccess("Certificate Signing Request generated successfully!")
 		fmt.Println()
-		fmt.Println("📁 Files created:")
-		fmt.Printf("  📄 CSR:         %s\n", csrPath)
-		fmt.Printf("  🔑 Private Key: %s\n", keyPath)
+		fmt.Printf("%s Files created:\n", getEmoji("📁", "[FILES]"))
+		fmt.Printf("  %s CSR:         %s\n", getEmoji("📄", "[CSR]"), csrPath)
+		fmt.Printf("  %s Private Key: %s\n", getEmoji("🔑", "[KEY]"), keyPath)
 		fmt.Println()
-		fmt.Println("📋 Next steps:")
+		fmt.Printf("%s Next steps:\n", getEmoji("📋", "[NEXT]"))
 		fmt.Println("  1. Submit the CSR to your Certificate Authority")
 		fmt.Println("  2. Keep the private key secure - you'll need it with the signed certificate")
 		fmt.Println("  3. Once you receive the signed certificate, install it with the private key")
 
 		// Optionally display the CSR details
 		fmt.Println()
-		fmt.Println("🔍 CSR Details:")
+		fmt.Printf("%s CSR Details:\n", getEmoji("🔍", "[INFO]"))
 		if err := displayCSRInfo(csrPath); err != nil {
 			ui.ShowInfo(fmt.Sprintf("Could not display CSR details: %v", err))
 		}

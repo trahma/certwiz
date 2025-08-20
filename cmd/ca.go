@@ -59,7 +59,7 @@ Examples:
 		}
 
 		// Generate CA certificate
-		fmt.Println("🔐 Generating Certificate Authority...")
+		fmt.Printf("%s Generating Certificate Authority...\n", getEmoji("🔐", "[CA]"))
 
 		certPath := filepath.Join(caOutput, sanitizeCAFilename(caCN)+"-ca.crt")
 		keyPath := filepath.Join(caOutput, sanitizeCAFilename(caCN)+"-ca.key")
@@ -72,23 +72,23 @@ Examples:
 		// Display success message
 		ui.ShowSuccess("Certificate Authority generated successfully!")
 		fmt.Println()
-		fmt.Println("📁 Files created:")
-		fmt.Printf("  🏛️  CA Certificate: %s\n", certPath)
-		fmt.Printf("  🔑 CA Private Key: %s\n", keyPath)
+		fmt.Printf("%s Files created:\n", getEmoji("📁", "[FILES]"))
+		fmt.Printf("  %s CA Certificate: %s\n", getEmoji("🏛️", "[CERT]"), certPath)
+		fmt.Printf("  %s CA Private Key: %s\n", getEmoji("🔑", "[KEY]"), keyPath)
 		fmt.Println()
-		fmt.Println("⚠️  Security Notes:")
+		fmt.Printf("%s Security Notes:\n", getEmoji("⚠️", "[WARNING]"))
 		fmt.Println("  • Keep the CA private key extremely secure")
 		fmt.Println("  • Never share the CA private key")
 		fmt.Println("  • Consider storing the key offline or in an HSM")
 		fmt.Println()
-		fmt.Println("📋 Next steps:")
+		fmt.Printf("%s Next steps:\n", getEmoji("📋", "[NEXT]"))
 		fmt.Println("  1. Distribute the CA certificate to clients that need to trust it")
 		fmt.Println("  2. Use 'cert sign' command to sign CSRs with this CA")
 		fmt.Println("  3. Keep the CA key secure and backed up")
 
 		// Display the CA certificate details
 		fmt.Println()
-		fmt.Println("🔍 CA Certificate Details:")
+		fmt.Printf("%s CA Certificate Details:\n", getEmoji("🔍", "[INFO]"))
 		caCert, err := cert.InspectFile(certPath)
 		if err != nil {
 			ui.ShowInfo(fmt.Sprintf("Could not display CA details: %v", err))
