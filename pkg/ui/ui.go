@@ -53,8 +53,6 @@ var (
 
 	valueStyle = lipgloss.NewStyle().
 			Foreground(white)
-
-	panelStyle = getPanelStyle()
 )
 
 // getPanelStyle returns the appropriate panel style based on environment
