@@ -256,17 +256,17 @@ func Verify(certPath, caPath, hostname string) (*VerificationResult, error) {
 
 	// Check expiration
 	now := time.Now()
-	if cert.NotBefore.After(now) {
+	if cert.Certificate.NotBefore.After(now) {
 		result.IsValid = false
 		result.Errors = append(result.Errors, "Certificate is not yet valid")
-	} else if cert.NotAfter.Before(now) {
+	} else if cert.Certificate.NotAfter.Before(now) {
 		result.IsValid = false
 		result.Errors = append(result.Errors, "Certificate has expired")
 	}
 
 	// Check hostname if provided
 	if hostname != "" {
-		if err := cert.VerifyHostname(hostname); err != nil {
+		if err := cert.Certificate.VerifyHostname(hostname); err != nil {
 			result.IsValid = false
 			result.Errors = append(result.Errors, fmt.Sprintf("Hostname verification failed: %v", err))
 		}

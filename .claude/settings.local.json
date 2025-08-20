@@ -42,7 +42,10 @@
       "Bash(git restore:*)",
       "Bash(grep:*)",
       "Bash(gh run list:*)",
-      "WebFetch(domain:github.com)"
+      "WebFetch(domain:github.com)",
+      "Bash(/usr/local/go/bin/go:*)",
+      "Bash(/usr/bin/go:*)",
+      "Bash(sed:*)"
     ],
     "deny": [],
     "ask": [],
