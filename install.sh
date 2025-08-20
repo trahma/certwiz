@@ -83,6 +83,17 @@ choose_install_dir() {
     # Get writable directories from PATH
     writable_dirs_list="$(get_writable_path_dirs)"
     
+    # Check if we can read input
+    local can_read_input=false
+    if [ -t 0 ]; then
+        can_read_input=true
+    elif [ -e /dev/tty ]; then
+        # Try to read from /dev/tty to see if it actually works
+        if (exec < /dev/tty) 2>/dev/null; then
+            can_read_input=true
+        fi
+    fi
+    
     printf "\n${BLUE}[INSTALL]${NC} Choose installation directory:\n" >&2
     
     # Check common user directories
@@ -125,10 +136,36 @@ choose_install_dir() {
     printf "  c) Custom directory\n" >&2
     printf "\n" >&2
     
+    # If we can't read input, auto-select the first writable directory
+    if [ "$can_read_input" = false ]; then
+        if echo "$writable_dirs_list" | grep -q "^$user_local$"; then
+            INSTALL_DIR="$user_local"
+            warning "Auto-selecting $user_local (no interactive input available)"
+        elif echo "$writable_dirs_list" | grep -q "^$user_bin$"; then
+            INSTALL_DIR="$user_bin"
+            warning "Auto-selecting $user_bin (no interactive input available)"
+        else
+            error "Cannot read user input and no writable directory found in PATH"
+            echo ""
+            info "Please run with --install-dir option:"
+            echo "  curl -sSL https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/main/install.sh | bash -s -- --install-dir ~/.local/bin"
+            exit 1
+        fi
+        return
+    fi
+    
     # Get user choice
     while true; do
         prompt "Select option [1-3, c]: "
-        read -r choice < /dev/tty
+        if [ -t 0 ]; then
+            read -r choice
+        elif [ -e /dev/tty ]; then
+            read -r choice < /dev/tty
+        else
+            # This shouldn't happen since we checked above
+            error "Cannot read user input"
+            exit 1
+        fi
         
         case "$choice" in
             1)
@@ -146,7 +183,14 @@ choose_install_dir() {
             c|C)
                 printf "\n" >&2
                 prompt "Enter custom directory path: "
-                read -r custom_dir < /dev/tty
+                if [ -t 0 ]; then
+                    read -r custom_dir
+                elif [ -e /dev/tty ]; then
+                    read -r custom_dir < /dev/tty
+                else
+                    error "Cannot read user input. Please run the script directly or specify --install-dir"
+                    exit 1
+                fi
                 
                 # Expand ~ to home directory if present
                 case "$custom_dir" in
@@ -259,19 +303,19 @@ download_binary() {
         exit 1
     fi
     
-    # Find the binary (it should be named cert-OS-ARCH in the archive)
-    local binary_path="${temp_dir}/${binary_name}"
+    # Find the binary (it's just named "cert" or "cert.exe" in the archive)
+    local binary_path="${temp_dir}/${BINARY_NAME}"
+    if [[ "${os}" == "windows" ]]; then
+        binary_path="${temp_dir}/${BINARY_NAME}.exe"
+    fi
+    
     if [[ ! -f "${binary_path}" ]]; then
-        # Try just the binary name
-        binary_path="${temp_dir}/${BINARY_NAME}"
-        if [[ ! -f "${binary_path}" ]]; then
-            # List what's in the temp dir for debugging
-            info "Looking for binary in: ${temp_dir}"
-            ls -la "${temp_dir}" >&2
-            error "Binary not found in archive"
-            rm -rf "${temp_dir}"
-            exit 1
-        fi
+        # List what's in the temp dir for debugging
+        info "Looking for binary in: ${temp_dir}"
+        ls -la "${temp_dir}" >&2
+        error "Binary not found in archive (expected: ${binary_path})"
+        rm -rf "${temp_dir}"
+        exit 1
     fi
     
     echo "${binary_path}"
