@@ -70,3 +70,6 @@ tmp/
 cert-darwin-*
 cert-linux-*
 cert-windows-*
+
+# Claude specific
+.claude/settings.local.json
