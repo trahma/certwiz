@@ -2,8 +2,14 @@ package cmd
 
 import (
 	"bytes"
+	"path/filepath"
 	"testing"
 )
+
+// testdataPath returns the path to a file in the testdata directory
+func testdataPath(filename string) string {
+	return filepath.Join("..", "..", "testdata", filename)
+}
 
 func TestInspectCommand(t *testing.T) {
 	tests := []struct {
@@ -15,7 +21,7 @@ func TestInspectCommand(t *testing.T) {
 	}{
 		{
 			name:    "Inspect valid PEM file",
-			args:    []string{"inspect", "../testdata/valid.pem"},
+			args:    []string{"inspect", testdataPath("valid.pem")},
 			wantErr: false,
 			expectedOutput: []string{
 				"Certificate from",
@@ -27,7 +33,7 @@ func TestInspectCommand(t *testing.T) {
 		},
 		{
 			name:    "Inspect valid DER file",
-			args:    []string{"inspect", "../testdata/valid.der"},
+			args:    []string{"inspect", testdataPath("valid.der")},
 			wantErr: false,
 			expectedOutput: []string{
 				"Certificate from",
@@ -36,7 +42,7 @@ func TestInspectCommand(t *testing.T) {
 		},
 		{
 			name:    "Inspect with --full flag",
-			args:    []string{"inspect", "../testdata/valid.pem", "--full"},
+			args:    []string{"inspect", testdataPath("valid.pem"), "--full"},
 			wantErr: false,
 			expectedOutput: []string{
 				"Certificate from",
