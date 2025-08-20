@@ -28,6 +28,7 @@ certwiz inspect [file|url] [flags]
 | `--full` | | Show full certificate details including all extensions | `false` |
 | `--chain` | | Show certificate chain (for URLs only) | `false` |
 | `--port` | `-p` | Port for remote inspection | `443` |
+| `--connect` | | Connect to a different host while validating cert for target | |
 
 ### Arguments
 
@@ -50,7 +51,26 @@ certwiz inspect google.com --full
 certwiz inspect github.com --chain
 certwiz inspect example.com --full --chain
 certwiz inspect internal.service --port 8443
+
+# Through proxy or tunnel
+certwiz inspect api.example.com --connect localhost:8080
+certwiz inspect prod.internal --connect tunnel.local --port 443
+certwiz inspect backend.local --connect 127.0.0.1:3000
 ```
+
+### Connect Flag Usage
+
+The `--connect` flag is useful for:
+- Testing certificates through SSH tunnels
+- Inspecting certificates behind proxies
+- Validating certificates in local development environments
+- Checking certificates on different servers with the same hostname
+
+When using `--connect`:
+- The connection is made to the host specified in `--connect`
+- The certificate is validated for the original target hostname (SNI)
+- Port can be specified in the connect host (e.g., `localhost:8080`) or via `--port`
+- If port is in both, the one in `--connect` takes precedence
 
 ### Output Details
 

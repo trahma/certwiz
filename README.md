@@ -45,6 +45,10 @@ cert convert cert.pem cert.der --format der
 
 # View the full certificate chain
 cert inspect github.com --chain
+
+# Inspect through a proxy or tunnel
+cert inspect api.example.com --connect localhost:8080
+cert inspect internal.site --connect tunnel.local --port 443
 ```
 
 ## 📦 Installation
@@ -167,6 +171,7 @@ cert inspect cert.pem --json | jq '.days_until_expiry'
 - Highlights expiration status with color coding
 - Displays full certificate chain with `--chain`
 - Shows detailed extensions with `--full`
+- Connect through proxies/tunnels with `--connect` flag
 
 ### Certificate Generation
 - Create self-signed certificates instantly
