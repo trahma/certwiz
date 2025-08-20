@@ -57,7 +57,10 @@
       "Bash(openssl verify:*)",
       "Bash(CI=true go test -v ./pkg/ui/...)",
       "Bash(CI=true go test -v -race ./...)",
-      "Bash(GITHUB_ACTIONS=true CI=true go test -v ./cmd/...)"
+      "Bash(GITHUB_ACTIONS=true CI=true go test -v ./cmd/...)",
+      "Bash(CI=true go test -v ./cmd/...)",
+      "Bash(CI=true go test ./...)",
+      "Bash(CI=true go test ./cmd/...)"
     ],
     "deny": [],
     "ask": [],
