@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.10] - 2025-08-20
+
+### Fixed
+- **Critical fix for `cert update` command**
+  - Fixed syscall.Exec argument issue that caused installer to drop to shell
+  - Properly pass "bash" as argv[0] for syscall.Exec
+  - Update command now correctly executes the installer script
+
 ## [0.1.9] - 2025-08-20
 
 ### Added
@@ -153,6 +161,7 @@ All features from v0.1.6 are included in this release.
 - Binary named `cert` for ease of use
 - Project name remains `certwiz`
 
+[0.1.10]: https://github.com/trahma/certwiz/releases/tag/v0.1.10
 [0.1.9]: https://github.com/trahma/certwiz/releases/tag/v0.1.9
 [0.1.8]: https://github.com/trahma/certwiz/releases/tag/v0.1.8
 [0.1.7]: https://github.com/trahma/certwiz/releases/tag/v0.1.7

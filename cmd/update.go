@@ -87,7 +87,8 @@ This command will:
 		}
 		
 		// Prepare arguments for the installer
-		installerArgs := []string{installerPath}
+		// For syscall.Exec, the first argument must be the program name itself
+		installerArgs := []string{"bash", installerPath}
 		if forceUpdate {
 			installerArgs = append(installerArgs, "--force")
 		}
@@ -110,7 +111,8 @@ This command will:
 		if err := syscall.Exec(bashPath, installerArgs, env); err != nil {
 			fmt.Fprintf(os.Stderr, "Error executing installer: %v\n", err)
 			// Fallback to regular exec if syscall.Exec fails
-			cmd := exec.Command("bash", installerArgs...)
+			// Skip the first "bash" argument for exec.Command
+			cmd := exec.Command("bash", installerArgs[1:]...)
 			cmd.Stdin = os.Stdin
 			cmd.Stdout = os.Stdout
 			cmd.Stderr = os.Stderr
