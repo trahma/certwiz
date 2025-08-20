@@ -397,17 +397,57 @@ install_binary() {
         ${sudo_cmd} cp "${install_path}" "${install_path}.backup" 2>/dev/null || true
     fi
     
-    # Copy binary to installation directory
-    info "Installing ${BINARY_NAME} to ${install_path}..."
-    ${sudo_cmd} cp "${binary_path}" "${install_path}"
+    # Check if we're updating a running binary (self-update scenario)
+    local is_self_update=false
+    if [[ -f "${install_path}" ]]; then
+        # Check if the binary at install_path is currently running
+        # This happens when 'cert update' calls this installer
+        local running_pid=""
+        if [[ "${OS}" == "darwin" ]]; then
+            # On macOS, check if cert process is running from this path
+            running_pid=$(pgrep -f "^${install_path}$" 2>/dev/null || true)
+        elif [[ "${OS}" == "linux" ]]; then
+            # On Linux, similar check
+            running_pid=$(pgrep -f "^${install_path}$" 2>/dev/null || true)
+        fi
+        
+        if [[ -n "${running_pid}" ]]; then
+            is_self_update=true
+            info "Detected self-update scenario (running process: PID ${running_pid})"
+        fi
+    fi
     
-    # Make binary executable
-    ${sudo_cmd} chmod +x "${install_path}"
-    
-    # Clear macOS extended attributes that can prevent execution
-    if [[ "${OS}" == "darwin" ]] && command -v xattr >/dev/null 2>&1; then
-        info "Clearing macOS extended attributes..."
-        ${sudo_cmd} xattr -cr "${install_path}" 2>/dev/null || true
+    # Install the binary - use different method for self-update on macOS
+    if [[ "${is_self_update}" == true ]] && [[ "${OS}" == "darwin" ]]; then
+        # For macOS self-update: use atomic move to avoid SIGKILL
+        info "Installing ${BINARY_NAME} to ${install_path} (self-update mode)..."
+        
+        # First copy to a temporary location next to the target
+        local temp_path="${install_path}.new"
+        ${sudo_cmd} cp "${binary_path}" "${temp_path}"
+        ${sudo_cmd} chmod +x "${temp_path}"
+        
+        # Clear extended attributes on the new binary before moving
+        if command -v xattr >/dev/null 2>&1; then
+            ${sudo_cmd} xattr -cr "${temp_path}" 2>/dev/null || true
+        fi
+        
+        # Atomic move to replace the running binary
+        ${sudo_cmd} mv -f "${temp_path}" "${install_path}"
+        info "Binary replaced using atomic move operation"
+    else
+        # Normal installation or non-macOS update
+        info "Installing ${BINARY_NAME} to ${install_path}..."
+        ${sudo_cmd} cp "${binary_path}" "${install_path}"
+        
+        # Make binary executable
+        ${sudo_cmd} chmod +x "${install_path}"
+        
+        # Clear macOS extended attributes that can prevent execution
+        if [[ "${OS}" == "darwin" ]] && command -v xattr >/dev/null 2>&1; then
+            info "Clearing macOS extended attributes..."
+            ${sudo_cmd} xattr -cr "${install_path}" 2>/dev/null || true
+        fi
     fi
     
     # Clean up temp directory
