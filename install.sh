@@ -404,6 +404,12 @@ install_binary() {
     # Make binary executable
     ${sudo_cmd} chmod +x "${install_path}"
     
+    # Clear macOS extended attributes that can prevent execution
+    if [[ "${OS}" == "darwin" ]] && command -v xattr >/dev/null 2>&1; then
+        info "Clearing macOS extended attributes..."
+        ${sudo_cmd} xattr -cr "${install_path}" 2>/dev/null || true
+    fi
+    
     # Clean up temp directory
     rm -rf "$(dirname "${binary_path}")"
 }
