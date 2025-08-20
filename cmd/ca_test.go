@@ -4,6 +4,7 @@ import (
 	"certwiz/pkg/cert"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
@@ -50,15 +51,18 @@ func TestCACommand(t *testing.T) {
 			t.Error("Generated certificate is not marked as CA")
 		}
 
-		// Check key permissions
-		info, err := os.Stat(keyPath)
-		if err != nil {
-			t.Fatalf("Failed to stat key file: %v", err)
-		}
+		// Check key permissions (only on Unix-like systems)
+		// Windows has different permission semantics
+		if runtime.GOOS != "windows" {
+			info, err := os.Stat(keyPath)
+			if err != nil {
+				t.Fatalf("Failed to stat key file: %v", err)
+			}
 
-		// On Unix systems, check that permissions are restricted
-		if info.Mode().Perm() != 0600 {
-			t.Errorf("CA key file has incorrect permissions: %v, expected 0600", info.Mode().Perm())
+			// On Unix systems, check that permissions are restricted
+			if info.Mode().Perm() != 0600 {
+				t.Errorf("CA key file has incorrect permissions: %v, expected 0600", info.Mode().Perm())
+			}
 		}
 	})
 

@@ -14,6 +14,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 )
@@ -543,9 +544,12 @@ func GenerateCA(options CAOptions, certPath, keyPath string) error {
 		return fmt.Errorf("failed to write private key: %w", err)
 	}
 
-	// Set restrictive permissions on the private key
-	if err := os.Chmod(keyPath, 0600); err != nil {
-		return fmt.Errorf("failed to set key permissions: %w", err)
+	// Set restrictive permissions on the private key (Unix-like systems only)
+	// Windows has different permission semantics
+	if runtime.GOOS != "windows" {
+		if err := os.Chmod(keyPath, 0600); err != nil {
+			return fmt.Errorf("failed to set key permissions: %w", err)
+		}
 	}
 
 	return nil

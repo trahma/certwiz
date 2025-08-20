@@ -93,7 +93,7 @@ func supportsUnicode() bool {
 	if term == "dumb" || term == "" {
 		return false
 	}
-	
+
 	// Check LANG/LC_ALL for UTF-8 support
 	lang := os.Getenv("LANG")
 	if lang == "" {
@@ -102,7 +102,7 @@ func supportsUnicode() bool {
 	if lang != "" && !strings.Contains(strings.ToLower(lang), "utf") {
 		return false
 	}
-	
+
 	return true
 }
 

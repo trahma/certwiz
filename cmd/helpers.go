@@ -21,4 +21,3 @@ func getEmoji(emoji, ascii string) string {
 	}
 	return emoji
 }
-

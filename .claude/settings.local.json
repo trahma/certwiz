@@ -60,7 +60,8 @@
       "Bash(GITHUB_ACTIONS=true CI=true go test -v ./cmd/...)",
       "Bash(CI=true go test -v ./cmd/...)",
       "Bash(CI=true go test ./...)",
-      "Bash(CI=true go test ./cmd/...)"
+      "Bash(CI=true go test ./cmd/...)",
+      "Bash(/dev/null)"
     ],
     "deny": [],
     "ask": [],
