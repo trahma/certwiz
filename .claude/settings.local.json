@@ -48,7 +48,8 @@
       "Bash(sed:*)",
       "Bash(mv:*)",
       "WebFetch(domain:api.github.com)",
-      "Bash(~/bin/cert:*)"
+      "Bash(~/bin/cert:*)",
+      "Bash(cp:*)"
     ],
     "deny": [],
     "ask": [],

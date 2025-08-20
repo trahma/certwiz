@@ -272,6 +272,43 @@ get_latest_version() {
     echo "${version}"
 }
 
+# Check for existing installation
+check_existing_installation() {
+    local existing_path=""
+    local existing_version=""
+    
+    # Check if cert command exists
+    if command -v "${BINARY_NAME}" >/dev/null 2>&1; then
+        existing_path="$(which ${BINARY_NAME})"
+        # Get version, handling various output formats
+        existing_version="$(${BINARY_NAME} version 2>/dev/null | grep -oE 'v?[0-9]+\.[0-9]+\.[0-9]+' | head -1)"
+        
+        if [[ -n "${existing_version}" ]]; then
+            # Normalize version (remove 'v' prefix if present)
+            existing_version="${existing_version#v}"
+            echo "${existing_path}:${existing_version}"
+            return 0
+        fi
+    fi
+    
+    return 1
+}
+
+# Compare versions (returns 0 if v1 < v2, 1 if v1 >= v2)
+version_lt() {
+    local v1="${1#v}"  # Remove 'v' prefix if present
+    local v2="${2#v}"
+    
+    # Simple version comparison
+    if [[ "${v1}" == "${v2}" ]]; then
+        return 1  # Equal, not less than
+    fi
+    
+    # Sort versions and check if v1 is the first (smaller)
+    local sorted=$(printf '%s\n%s' "${v1}" "${v2}" | sort -V | head -1)
+    [[ "${sorted}" == "${v1}" ]]
+}
+
 # Download binary
 download_binary() {
     local version="$1"
@@ -354,6 +391,12 @@ install_binary() {
         ${sudo_cmd} mkdir -p "${INSTALL_DIR}"
     fi
     
+    # Backup existing binary if it exists
+    if [[ -f "${install_path}" ]]; then
+        info "Backing up existing binary..."
+        ${sudo_cmd} cp "${install_path}" "${install_path}.backup" 2>/dev/null || true
+    fi
+    
     # Copy binary to installation directory
     info "Installing ${BINARY_NAME} to ${install_path}..."
     ${sudo_cmd} cp "${binary_path}" "${install_path}"
@@ -413,6 +456,26 @@ main() {
     ARCH="$(detect_arch)"
     success "Detected: ${OS}/${ARCH}"
     
+    # Check for existing installation
+    local existing_info=""
+    local existing_path=""
+    local existing_version=""
+    local is_upgrade=false
+    
+    if existing_info="$(check_existing_installation)"; then
+        existing_path="${existing_info%:*}"
+        existing_version="${existing_info#*:}"
+        info "Found existing installation:"
+        info "  Path: ${existing_path}"
+        info "  Version: v${existing_version}"
+        is_upgrade=true
+        
+        # Use existing installation directory by default for upgrades
+        if [[ -z "${INSTALL_DIR_SET}" ]]; then
+            INSTALL_DIR="$(dirname "${existing_path}")"
+        fi
+    fi
+    
     # Get version
     if [[ -n "${VERSION}" ]]; then
         info "Using specified version: ${VERSION}"
@@ -422,8 +485,24 @@ main() {
         success "Latest version: ${VERSION}"
     fi
     
-    # Choose installation directory (unless explicitly set via --install-dir)
-    if [[ -n "${FORCE_INTERACTIVE}" ]] || ([[ "${INSTALL_DIR}" == "/usr/local/bin" ]] && [[ -z "${INSTALL_DIR_SET}" ]]); then
+    # Check if upgrade is needed
+    if [[ "${is_upgrade}" == true ]]; then
+        local new_version="${VERSION#v}"
+        if [[ -z "${FORCE_UPDATE}" ]] && ! version_lt "${existing_version}" "${new_version}"; then
+            success "${BINARY_NAME} is already up to date (v${existing_version})"
+            exit 0
+        fi
+        if [[ -n "${FORCE_UPDATE}" ]]; then
+            warning "Force reinstalling v${existing_version} -> ${VERSION}"
+        elif version_lt "${existing_version}" "${new_version}"; then
+            warning "Upgrade available: v${existing_version} -> ${VERSION}"
+        fi
+    fi
+    
+    # Choose installation directory (unless explicitly set via --install-dir or upgrading)
+    if [[ "${is_upgrade}" == true ]]; then
+        info "Upgrading in place at: ${INSTALL_DIR}"
+    elif [[ -n "${FORCE_INTERACTIVE}" ]] || ([[ "${INSTALL_DIR}" == "/usr/local/bin" ]] && [[ -z "${INSTALL_DIR_SET}" ]]); then
         choose_install_dir
     else
         info "Installing to: ${INSTALL_DIR}"
@@ -442,13 +521,20 @@ main() {
     
     echo ""
     echo "================================================"
-    echo "     Installation Complete!"
-    echo "================================================"
-    echo ""
-    echo "Get started with:"
-    echo "  ${BINARY_NAME} help"
-    echo "  ${BINARY_NAME} version"
-    echo "  ${BINARY_NAME} inspect google.com"
+    if [[ "${is_upgrade}" == true ]]; then
+        echo "     Upgrade Complete!"
+        echo "================================================"
+        echo ""
+        echo "Upgraded from v${existing_version} to ${VERSION}"
+    else
+        echo "     Installation Complete!"
+        echo "================================================"
+        echo ""
+        echo "Get started with:"
+        echo "  ${BINARY_NAME} help"
+        echo "  ${BINARY_NAME} version"
+        echo "  ${BINARY_NAME} inspect google.com"
+    fi
     echo ""
 }
 
@@ -468,6 +554,10 @@ while [[ $# -gt 0 ]]; do
             FORCE_INTERACTIVE="1"
             shift
             ;;
+        --force)
+            FORCE_UPDATE="1"
+            shift
+            ;;
         --help)
             echo "CertWiz Installer"
             echo ""
@@ -477,6 +567,7 @@ while [[ $# -gt 0 ]]; do
             echo "  --version VERSION     Install specific version (default: latest)"
             echo "  --install-dir DIR     Installation directory (default: interactive selection)"
             echo "  --interactive         Force interactive directory selection"
+            echo "  --force              Force update even if already on latest version"
             echo "  --help               Show this help message"
             echo ""
             echo "Environment Variables:"
