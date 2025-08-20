@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.7] - 2025-08-20
+
+### Fixed
+- Fixed goreleaser configuration for v2 compatibility
+- Added version: 2 declaration to .goreleaser.yml
+- Updated release and brews sections for v2 format
+
+### Note
+This is a hotfix release to address the goreleaser build issue in v0.1.6.
+All features from v0.1.6 are included in this release.
+
 ## [0.1.6] - 2025-08-20
 
 ### Added
@@ -111,6 +122,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Binary named `cert` for ease of use
 - Project name remains `certwiz`
 
+[0.1.7]: https://github.com/trahma/certwiz/releases/tag/v0.1.7
 [0.1.6]: https://github.com/trahma/certwiz/releases/tag/v0.1.6
 [0.1.5]: https://github.com/trahma/certwiz/releases/tag/v0.1.5
 [0.1.4]: https://github.com/trahma/certwiz/releases/tag/v0.1.4
