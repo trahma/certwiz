@@ -11,6 +11,9 @@ certwiz makes working with X.509 certificates as simple as possible. No more wre
 
 - 🔍 **Inspect** certificates from files or live websites
 - 🔐 **Generate** self-signed certificates with custom SANs
+- 📝 **Create CSRs** (Certificate Signing Requests) for CA signing
+- 🏛️ **Create CAs** to sign certificates and build trust chains
+- ✍️ **Sign certificates** using your own Certificate Authority
 - 🔄 **Convert** between PEM and DER formats effortlessly
 - ✅ **Verify** certificates against hostnames
 - 🔗 **View certificate chains** to understand trust paths
@@ -26,6 +29,15 @@ cert inspect google.com
 
 # Generate a self-signed certificate
 cert generate --cn myapp.local --san "*.myapp.local"
+
+# Create a Certificate Signing Request
+cert csr --cn server.example.com --org "My Company"
+
+# Create a Certificate Authority
+cert ca --cn "Company Root CA" --org "My Company"
+
+# Sign a CSR with your CA
+cert sign --csr server.csr --ca ca.crt --ca-key ca.key
 
 # Convert certificate format
 cert convert cert.pem cert.der --format der

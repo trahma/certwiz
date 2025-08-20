@@ -49,7 +49,12 @@
       "Bash(mv:*)",
       "WebFetch(domain:api.github.com)",
       "Bash(~/bin/cert:*)",
-      "Bash(cp:*)"
+      "Bash(cp:*)",
+      "Bash(cat:*)",
+      "Bash(gh release list:*)",
+      "Bash(openssl req:*)",
+      "Bash(git checkout:*)",
+      "Bash(openssl verify:*)"
     ],
     "deny": [],
     "ask": [],

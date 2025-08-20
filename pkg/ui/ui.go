@@ -687,3 +687,34 @@ func getPolicyName(oid string) string {
 	}
 	return oid
 }
+
+// DisplayCSRInfo displays Certificate Signing Request information
+func DisplayCSRInfo(info *cert.CSRInfo) {
+	// Create a table with CSR information
+	table := [][]string{
+		{"Subject", formatSubject(info.Subject)},
+		{"Signature Algorithm", info.SignatureAlgorithm},
+		{"Public Key", fmt.Sprintf("%s %d bits", info.PublicKeyAlgorithm, info.KeySize)},
+	}
+
+	// Add SANs if present
+	if len(info.SANs) > 0 {
+		sanText := formatSANs(info.SANs)
+		table = append(table, []string{"Subject Alt Names", sanText})
+	}
+
+	// Display the table
+	content := formatTable(table)
+	
+	// Get terminal width to constrain the panel
+	width, _, err := term.GetSize(0)
+	if err != nil || width <= 0 {
+		width = 80
+	}
+
+	panel := panelStyle.Copy().
+		BorderForeground(cyan).
+		Width(width - 4)
+	
+	fmt.Println(panel.Render(content))
+}
