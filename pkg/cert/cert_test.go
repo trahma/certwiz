@@ -1,6 +1,7 @@
 package cert
 
 import (
+	"certwiz/internal/testutil"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"fmt"
@@ -11,11 +12,6 @@ import (
 	"time"
 )
 
-// testdataPath returns the path to a file in the testdata directory
-// handling the correct path separators for the current OS
-func testdataPath(filename string) string {
-	return filepath.Join("..", "..", "testdata", filename)
-}
 
 func TestInspectFile(t *testing.T) {
 	tests := []struct {
@@ -26,7 +22,7 @@ func TestInspectFile(t *testing.T) {
 	}{
 		{
 			name:        "Valid PEM certificate",
-			file:        testdataPath("valid.pem"),
+			file:        testutil.TestdataPath("valid.pem"),
 			expectError: false,
 			checks: func(t *testing.T, cert *Certificate) {
 				if cert.Format != "PEM" {
@@ -42,7 +38,7 @@ func TestInspectFile(t *testing.T) {
 		},
 		{
 			name:        "Valid DER certificate",
-			file:        testdataPath("valid.der"),
+			file:        testutil.TestdataPath("valid.der"),
 			expectError: false,
 			checks: func(t *testing.T, cert *Certificate) {
 				if cert.Format != "DER" {
@@ -52,17 +48,17 @@ func TestInspectFile(t *testing.T) {
 		},
 		{
 			name:        "Invalid certificate",
-			file:        testdataPath("invalid.pem"),
+			file:        testutil.TestdataPath("invalid.pem"),
 			expectError: true,
 		},
 		{
 			name:        "Non-existent file",
-			file:        testdataPath("nonexistent.pem"),
+			file:        testutil.TestdataPath("nonexistent.pem"),
 			expectError: true,
 		},
 		{
 			name:        "Certificate with many SANs",
-			file:        testdataPath("many-sans.pem"),
+			file:        testutil.TestdataPath("many-sans.pem"),
 			expectError: false,
 			checks: func(t *testing.T, cert *Certificate) {
 				expectedSANs := []string{
@@ -120,19 +116,19 @@ func TestParseCertificate(t *testing.T) {
 	}{
 		{
 			name:         "PEM format",
-			file:         testdataPath("valid.pem"),
+			file:         testutil.TestdataPath("valid.pem"),
 			expectFormat: "PEM",
 			expectError:  false,
 		},
 		{
 			name:         "DER format",
-			file:         testdataPath("valid.der"),
+			file:         testutil.TestdataPath("valid.der"),
 			expectFormat: "DER",
 			expectError:  false,
 		},
 		{
 			name:         "Invalid data",
-			file:         testdataPath("invalid.pem"),
+			file:         testutil.TestdataPath("invalid.pem"),
 			expectFormat: "",
 			expectError:  true,
 		},
@@ -284,28 +280,28 @@ func TestConvert(t *testing.T) {
 	}{
 		{
 			name:        "PEM to DER",
-			inputFile:   testdataPath("valid.pem"),
+			inputFile:   testutil.TestdataPath("valid.pem"),
 			outputFile:  filepath.Join(tempDir, "converted.der"),
 			format:      "der",
 			expectError: false,
 		},
 		{
 			name:        "DER to PEM",
-			inputFile:   testdataPath("valid.der"),
+			inputFile:   testutil.TestdataPath("valid.der"),
 			outputFile:  filepath.Join(tempDir, "converted.pem"),
 			format:      "pem",
 			expectError: false,
 		},
 		{
 			name:        "Invalid input file",
-			inputFile:   testdataPath("nonexistent.pem"),
+			inputFile:   testutil.TestdataPath("nonexistent.pem"),
 			outputFile:  filepath.Join(tempDir, "output.pem"),
 			format:      "pem",
 			expectError: true,
 		},
 		{
 			name:        "Invalid format",
-			inputFile:   testdataPath("valid.pem"),
+			inputFile:   testutil.TestdataPath("valid.pem"),
 			outputFile:  filepath.Join(tempDir, "output.xyz"),
 			format:      "xyz",
 			expectError: true,
@@ -364,7 +360,7 @@ func TestVerify(t *testing.T) {
 	}{
 		{
 			name:        "Valid certificate",
-			certPath:    testdataPath("valid.pem"),
+			certPath:    testutil.TestdataPath("valid.pem"),
 			caPath:      "",
 			hostname:    "",
 			expectValid: true,
@@ -372,7 +368,7 @@ func TestVerify(t *testing.T) {
 		},
 		{
 			name:        "Valid certificate with correct hostname",
-			certPath:    testdataPath("valid.pem"),
+			certPath:    testutil.TestdataPath("valid.pem"),
 			caPath:      "",
 			hostname:    "test.example.com",
 			expectValid: true,
@@ -380,7 +376,7 @@ func TestVerify(t *testing.T) {
 		},
 		{
 			name:        "Valid certificate with wildcard match",
-			certPath:    testdataPath("valid.pem"),
+			certPath:    testutil.TestdataPath("valid.pem"),
 			caPath:      "",
 			hostname:    "sub.test.example.com",
 			expectValid: true,
@@ -388,7 +384,7 @@ func TestVerify(t *testing.T) {
 		},
 		{
 			name:        "Valid certificate with wrong hostname",
-			certPath:    testdataPath("valid.pem"),
+			certPath:    testutil.TestdataPath("valid.pem"),
 			caPath:      "",
 			hostname:    "wrong.example.com",
 			expectValid: false,
@@ -396,7 +392,7 @@ func TestVerify(t *testing.T) {
 		},
 		{
 			name:        "Non-existent certificate",
-			certPath:    testdataPath("nonexistent.pem"),
+			certPath:    testutil.TestdataPath("nonexistent.pem"),
 			caPath:      "",
 			hostname:    "",
 			expectValid: false,
@@ -538,7 +534,7 @@ func TestInspectURLWithChain(t *testing.T) {
 
 // Benchmark tests
 func BenchmarkParseCertificatePEM(b *testing.B) {
-	data, err := os.ReadFile(testdataPath("valid.pem"))
+	data, err := os.ReadFile(testutil.TestdataPath("valid.pem"))
 	if err != nil {
 		b.Fatalf("Failed to read test file: %v", err)
 	}
@@ -553,7 +549,7 @@ func BenchmarkParseCertificatePEM(b *testing.B) {
 }
 
 func BenchmarkParseCertificateDER(b *testing.B) {
-	data, err := os.ReadFile(testdataPath("valid.der"))
+	data, err := os.ReadFile(testutil.TestdataPath("valid.der"))
 	if err != nil {
 		b.Fatalf("Failed to read test file: %v", err)
 	}
