@@ -677,20 +677,32 @@ add_to_path() {
         echo "${path_line}" >> "${config_file}"
         
         success "PATH configuration added to ${config_file}"
-        info "Please run the following to reload your configuration:"
+        
+        # Export PATH for current session (works for bash/zsh when script is sourced)
+        export PATH="${install_dir}:$PATH"
+        
+        # Provide instructions for activating in current session
+        echo ""
+        warning "IMPORTANT: The PATH change will NOT take effect in this session automatically."
+        info "To use cert immediately, do ONE of the following:"
+        echo ""
+        echo "  Option 1: Open a new terminal window/tab"
+        echo ""
+        echo "  Option 2: Run this command to reload your shell configuration:"
         case "${shell_type}" in
             bash)
-                echo "  source ${config_file}"
+                echo "    source ${config_file}"
                 ;;
             zsh)
-                echo "  source ${config_file}"
+                echo "    source ${config_file}"
                 ;;
             fish)
-                echo "  source ${config_file}"
+                echo "    source ${config_file}"
                 ;;
         esac
         echo ""
-        info "Or start a new terminal session"
+        echo "  Option 3: Use the full path for this session only:"
+        echo "    ${install_dir}/${BINARY_NAME} --help"
     else
         info "Skipping PATH configuration"
         info "You can manually add the following to your shell configuration:"
@@ -820,10 +832,31 @@ main() {
         echo "     Installation Complete!"
         echo "================================================"
         echo ""
-        echo "Get started with:"
-        echo "  ${BINARY_NAME} help"
-        echo "  ${BINARY_NAME} version"
-        echo "  ${BINARY_NAME} inspect google.com"
+        
+        # Check if cert is available in current PATH
+        if command -v "${BINARY_NAME}" >/dev/null 2>&1; then
+            echo "Get started with:"
+            echo "  ${BINARY_NAME} help"
+            echo "  ${BINARY_NAME} version"
+            echo "  ${BINARY_NAME} inspect google.com"
+        else
+            # cert is not in PATH for current session
+            echo "To start using cert:"
+            echo ""
+            echo "  EITHER: Open a new terminal window/tab"
+            echo ""
+            echo "  OR: Reload your shell configuration:"
+            local shell_type="$(detect_shell)"
+            local config_file="$(get_shell_config "${shell_type}")"
+            if [[ -n "${config_file}" ]]; then
+                echo "      source ${config_file}"
+            else
+                echo "      source your shell configuration file"
+            fi
+            echo ""
+            echo "  OR: Use the full path:"
+            echo "      ${INSTALL_DIR}/${BINARY_NAME} help"
+        fi
     fi
     echo ""
 }
