@@ -47,13 +47,13 @@ Add the export line to your shell configuration (`~/.bashrc`, `~/.zshrc`, etc.)
 
 Use sudo for system-wide installation:
 ```bash
-sudo mv certwiz /usr/local/bin/
+sudo mv cert /usr/local/bin/
 ```
 
 Or install to user directory:
 ```bash
 mkdir -p ~/.local/bin
-mv certwiz ~/.local/bin/
+mv cert ~/.local/bin/
 export PATH=$PATH:~/.local/bin
 ```
 
@@ -71,7 +71,7 @@ For Windows, use Windows Terminal or PowerShell 7+.
 ### How do I check if a certificate is expired?
 
 ```bash
-certwiz inspect example.com
+cert inspect example.com
 ```
 
 Look for the "Status" line - it will show:
@@ -84,9 +84,9 @@ Look for the "Status" line - it will show:
 Yes, multiple ways:
 
 ```bash
-certwiz inspect example.com:8443
-certwiz inspect example.com --port 8443
-certwiz inspect https://example.com:8443
+cert inspect example.com:8443
+cert inspect example.com --port 8443
+cert inspect https://example.com:8443
 ```
 
 ### What does the --full flag show?
@@ -102,7 +102,7 @@ The `--full` flag displays detailed certificate extensions:
 ### How do I see the certificate chain?
 
 ```bash
-certwiz inspect example.com --chain
+cert inspect example.com --chain
 ```
 
 This shows the complete chain from server certificate to root CA.
@@ -122,7 +122,7 @@ Currently, certwiz generates self-signed certificates. CA certificate generation
 Use multiple `--san` flags:
 
 ```bash
-certwiz generate --cn example.com \
+cert generate --cn example.com \
   --san example.com \
   --san www.example.com \
   --san "*.example.com" \
@@ -134,7 +134,7 @@ certwiz generate --cn example.com \
 Yes, prefix IPs with `IP:`:
 
 ```bash
-certwiz generate --cn server.local \
+cert generate --cn server.local \
   --san server.local \
   --san IP:192.168.1.100 \
   --san IP:10.0.0.1 \
@@ -150,7 +150,7 @@ Currently RSA keys with configurable size (2048, 4096 bits). ECDSA support is pl
 By default in the current directory. Use `--output` to specify:
 
 ```bash
-certwiz generate --cn example.com --output /path/to/directory/
+cert generate --cn example.com --output /path/to/directory/
 ```
 
 Files are named: `{cn}.crt` and `{cn}.key`
@@ -198,7 +198,7 @@ With `--ca`:
 ### How do I verify against a custom CA?
 
 ```bash
-certwiz verify server.crt --ca /path/to/ca-bundle.crt
+cert verify server.crt --ca /path/to/ca-bundle.crt
 ```
 
 ### Can I verify self-signed certificates?
@@ -206,7 +206,7 @@ certwiz verify server.crt --ca /path/to/ca-bundle.crt
 Yes, but verification will note that it's self-signed. For full validation, provide the same certificate as the CA:
 
 ```bash
-certwiz verify self-signed.crt --ca self-signed.crt
+cert verify self-signed.crt --ca self-signed.crt
 ```
 
 ## Troubleshooting
@@ -224,7 +224,7 @@ Check:
 This is informational - certwiz still shows certificate details. To verify against a CA:
 
 ```bash
-certwiz verify cert.pem --ca ca-bundle.crt
+cert verify cert.pem --ca ca-bundle.crt
 ```
 
 ### Garbled output or missing colors
@@ -232,10 +232,10 @@ certwiz verify cert.pem --ca ca-bundle.crt
 Check terminal compatibility:
 ```bash
 # Force colors
-FORCE_COLOR=1 certwiz inspect example.com
+FORCE_COLOR=1 cert inspect example.com
 
 # Disable colors
-NO_COLOR=1 certwiz inspect example.com
+NO_COLOR=1 cert inspect example.com
 ```
 
 ### How do I debug connection issues?
@@ -244,13 +244,13 @@ Use combination of flags:
 
 ```bash
 # Full details
-certwiz inspect problematic.site --full
+cert inspect problematic.site --full
 
 # Check chain
-certwiz inspect problematic.site --chain
+cert inspect problematic.site --chain
 
 # Try different port
-certwiz inspect problematic.site --port 8443
+cert inspect problematic.site --port 8443
 ```
 
 ## Integration
@@ -265,7 +265,7 @@ Yes! certwiz is script-friendly:
 Example:
 ```bash
 #!/bin/bash
-if certwiz inspect example.com | grep -q "EXPIRED"; then
+if cert inspect example.com | grep -q "EXPIRED"; then
     echo "Certificate expired!"
     exit 1
 fi
