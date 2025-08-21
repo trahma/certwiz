@@ -73,6 +73,18 @@ get_writable_path_dirs() {
     IFS="$oldIFS"
 }
 
+# Check if we can create a directory (parent is writable)
+can_create_dir() {
+    local dir="$1"
+    local parent="$(dirname "$dir")"
+    
+    # If parent exists and is writable, we can create the dir
+    if [ -d "$parent" ] && [ -w "$parent" ]; then
+        return 0
+    fi
+    return 1
+}
+
 # Choose installation directory interactively
 choose_install_dir() {
     local writable_dirs_list
@@ -96,54 +108,89 @@ choose_install_dir() {
     
     printf "\n${BLUE}[INSTALL]${NC} Choose installation directory:\n" >&2
     
-    # Check common user directories
     local option_num=1
+    local options_array=()
+    local option_descriptions=()
+    
+    # First, show any writable directories already in PATH
+    if [ -n "$writable_dirs_list" ]; then
+        while IFS= read -r dir; do
+            printf "  %d) %s ${GREEN}(writable, in PATH)${NC}\n" $option_num "$dir" >&2
+            options_array[$option_num]="$dir"
+            option_num=$((option_num + 1))
+        done <<< "$writable_dirs_list"
+    fi
+    
+    # Then check common user directories
     local user_local="$HOME/.local/bin"
     local user_bin="$HOME/bin"
     local usr_local="/usr/local/bin"
     
-    # Option 1: ~/.local/bin (preferred user directory)
-    if echo "$writable_dirs_list" | grep -q "^$user_local$"; then
-        printf "  %d) %s ${GREEN}(writable)${NC}\n" $option_num "$user_local" >&2
-    elif [ -d "$user_local" ]; then
-        printf "  %d) %s ${YELLOW}(exists but not writable)${NC}\n" $option_num "$user_local" >&2
-    else
-        printf "  %d) %s ${YELLOW}(will be created)${NC}\n" $option_num "$user_local" >&2
+    # Check ~/.local/bin if not already listed
+    if ! echo "$writable_dirs_list" | grep -q "^$user_local$"; then
+        if [ -d "$user_local" ]; then
+            if [ -w "$user_local" ]; then
+                printf "  %d) %s ${GREEN}(writable)${NC}\n" $option_num "$user_local" >&2
+            else
+                printf "  %d) %s ${YELLOW}(exists but requires sudo)${NC}\n" $option_num "$user_local" >&2
+            fi
+        elif can_create_dir "$user_local"; then
+            printf "  %d) %s ${YELLOW}(will be created)${NC}\n" $option_num "$user_local" >&2
+        else
+            printf "  %d) %s ${YELLOW}(will be created with sudo)${NC}\n" $option_num "$user_local" >&2
+        fi
+        options_array[$option_num]="$user_local"
+        option_num=$((option_num + 1))
     fi
-    option_num=$((option_num + 1))
     
-    # Option 2: ~/bin
-    if echo "$writable_dirs_list" | grep -q "^$user_bin$"; then
-        printf "  %d) %s ${GREEN}(writable)${NC}\n" $option_num "$user_bin" >&2
-    elif [ -d "$user_bin" ]; then
-        printf "  %d) %s ${YELLOW}(exists but not writable)${NC}\n" $option_num "$user_bin" >&2
-    else
-        printf "  %d) %s ${YELLOW}(will be created)${NC}\n" $option_num "$user_bin" >&2
+    # Check ~/bin if not already listed
+    if ! echo "$writable_dirs_list" | grep -q "^$user_bin$"; then
+        if [ -d "$user_bin" ]; then
+            if [ -w "$user_bin" ]; then
+                printf "  %d) %s ${GREEN}(writable)${NC}\n" $option_num "$user_bin" >&2
+            else
+                printf "  %d) %s ${YELLOW}(exists but requires sudo)${NC}\n" $option_num "$user_bin" >&2
+            fi
+        elif can_create_dir "$user_bin"; then
+            printf "  %d) %s ${YELLOW}(will be created)${NC}\n" $option_num "$user_bin" >&2
+        else
+            printf "  %d) %s ${YELLOW}(will be created with sudo)${NC}\n" $option_num "$user_bin" >&2
+        fi
+        options_array[$option_num]="$user_bin"
+        option_num=$((option_num + 1))
     fi
-    option_num=$((option_num + 1))
     
-    # Option 3: /usr/local/bin (system directory)
-    if echo "$writable_dirs_list" | grep -q "^$usr_local$"; then
-        printf "  %d) %s ${GREEN}(writable)${NC}\n" $option_num "$usr_local" >&2
-    elif [ -d "$usr_local" ]; then
-        printf "  %d) %s ${YELLOW}(requires sudo)${NC}\n" $option_num "$usr_local" >&2
-    else
-        printf "  %d) %s ${YELLOW}(will be created with sudo)${NC}\n" $option_num "$usr_local" >&2
+    # Check /usr/local/bin if not already listed
+    if ! echo "$writable_dirs_list" | grep -q "^$usr_local$"; then
+        if [ -d "$usr_local" ]; then
+            if [ -w "$usr_local" ]; then
+                printf "  %d) %s ${GREEN}(writable)${NC}\n" $option_num "$usr_local" >&2
+            else
+                printf "  %d) %s ${YELLOW}(requires sudo)${NC}\n" $option_num "$usr_local" >&2
+            fi
+        else
+            printf "  %d) %s ${YELLOW}(will be created with sudo)${NC}\n" $option_num "$usr_local" >&2
+        fi
+        options_array[$option_num]="$usr_local"
+        option_num=$((option_num + 1))
     fi
-    option_num=$((option_num + 1))
     
-    # Option 4: Custom directory
+    # Custom directory option
     printf "  c) Custom directory\n" >&2
     printf "\n" >&2
     
     # If we can't read input, auto-select the first writable directory
     if [ "$can_read_input" = false ]; then
-        if echo "$writable_dirs_list" | grep -q "^$user_local$"; then
+        if [ -n "$writable_dirs_list" ]; then
+            # Use the first writable directory from PATH
+            INSTALL_DIR="$(echo "$writable_dirs_list" | head -1)"
+            warning "Auto-selecting $INSTALL_DIR (no interactive input available)"
+        elif can_create_dir "$user_local"; then
             INSTALL_DIR="$user_local"
-            warning "Auto-selecting $user_local (no interactive input available)"
-        elif echo "$writable_dirs_list" | grep -q "^$user_bin$"; then
+            warning "Auto-selecting $user_local (will be created, no interactive input available)"
+        elif can_create_dir "$user_bin"; then
             INSTALL_DIR="$user_bin"
-            warning "Auto-selecting $user_bin (no interactive input available)"
+            warning "Auto-selecting $user_bin (will be created, no interactive input available)"
         else
             error "Cannot read user input and no writable directory found in PATH"
             echo ""
@@ -155,8 +202,9 @@ choose_install_dir() {
     fi
     
     # Get user choice
+    local max_option=$((option_num - 1))
     while true; do
-        prompt "Select option [1-3, c]: "
+        prompt "Select option [1-${max_option}, c]: "
         if [ -t 0 ]; then
             read -r choice
         elif [ -e /dev/tty ]; then
@@ -167,20 +215,11 @@ choose_install_dir() {
             exit 1
         fi
         
-        case "$choice" in
-            1)
-                INSTALL_DIR="$user_local"
-                break
-                ;;
-            2)
-                INSTALL_DIR="$user_bin"
-                break
-                ;;
-            3)
-                INSTALL_DIR="$usr_local"
-                break
-                ;;
-            c|C)
+        # Check if it's a number within range
+        if [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -ge 1 ] && [ "$choice" -le "$max_option" ]; then
+            INSTALL_DIR="${options_array[$choice]}"
+            break
+        elif [[ "$choice" == "c" ]] || [[ "$choice" == "C" ]]; then
                 printf "\n" >&2
                 prompt "Enter custom directory path: "
                 if [ -t 0 ]; then
@@ -203,11 +242,9 @@ choose_install_dir() {
                 else
                     warning "Please enter a valid directory path."
                 fi
-                ;;
-            *)
-                warning "Please enter a valid option (1-3 or c)."
-                ;;
-        esac
+        else
+            warning "Please enter a valid option (1-${max_option} or c)."
+        fi
     done
     
     printf "\n" >&2
