@@ -420,14 +420,35 @@ install_binary() {
     local binary_path="$1"
     local install_path="${INSTALL_DIR}/${BINARY_NAME}"
     
-    # Check if we need sudo
+    # Determine if we need sudo
     local sudo_cmd=""
-    if [[ ! -w "${INSTALL_DIR}" ]]; then
+    local need_sudo=false
+    local sudo_reason=""
+    
+    if [[ -d "${INSTALL_DIR}" ]]; then
+        # Directory exists - check if writable
+        if [[ ! -w "${INSTALL_DIR}" ]]; then
+            need_sudo=true
+            sudo_reason="Directory ${INSTALL_DIR} exists but is not writable by current user"
+        fi
+    else
+        # Directory doesn't exist - check if parent is writable
+        local parent_dir="$(dirname "${INSTALL_DIR}")"
+        if [[ ! -d "$parent_dir" ]] || [[ ! -w "$parent_dir" ]]; then
+            need_sudo=true
+            sudo_reason="Cannot create ${INSTALL_DIR} - parent directory is not writable"
+        fi
+    fi
+    
+    # Setup sudo if needed
+    if [[ "$need_sudo" == true ]]; then
         if command -v sudo >/dev/null 2>&1; then
             sudo_cmd="sudo"
-            info "Installation requires sudo privileges..."
+            info "Installation requires sudo privileges"
+            info "Reason: ${sudo_reason}"
         else
-            error "Cannot write to ${INSTALL_DIR} and sudo is not available"
+            error "Cannot proceed: ${sudo_reason}"
+            error "sudo is not available on this system"
             exit 1
         fi
     fi
