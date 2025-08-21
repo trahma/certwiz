@@ -130,23 +130,37 @@ choose_install_dir() {
     # Check ~/.local/bin if not already listed
     if ! echo "$writable_dirs_list" | grep -q "^$user_local$"; then
         # Check if directory is in PATH
-        local in_path_msg=""
+        local in_path=false
         if echo "$PATH" | tr ':' '\n' | grep -q "^$user_local$"; then
-            in_path_msg="${GREEN}[IN PATH]${NC}"
-        else
-            in_path_msg="${RED}[NOT IN PATH]${NC}"
+            in_path=true
         fi
         
         if [ -d "$user_local" ]; then
             if [ -w "$user_local" ]; then
-                printf "  %d) %s ${GREEN}(writable)${NC} %s\n" $option_num "$user_local" "$in_path_msg" >&2
+                if [ "$in_path" = true ]; then
+                    printf "  %d) %s ${GREEN}(writable)${NC} ${GREEN}[IN PATH]${NC}\n" $option_num "$user_local" >&2
+                else
+                    printf "  %d) %s ${GREEN}(writable)${NC} ${RED}[NOT IN PATH]${NC}\n" $option_num "$user_local" >&2
+                fi
             else
-                printf "  %d) %s ${YELLOW}(exists but requires sudo)${NC} %s\n" $option_num "$user_local" "$in_path_msg" >&2
+                if [ "$in_path" = true ]; then
+                    printf "  %d) %s ${YELLOW}(exists but requires sudo)${NC} ${GREEN}[IN PATH]${NC}\n" $option_num "$user_local" >&2
+                else
+                    printf "  %d) %s ${YELLOW}(exists but requires sudo)${NC} ${RED}[NOT IN PATH]${NC}\n" $option_num "$user_local" >&2
+                fi
             fi
         elif can_create_dir "$user_local"; then
-            printf "  %d) %s ${YELLOW}(will be created)${NC} %s\n" $option_num "$user_local" "$in_path_msg" >&2
+            if [ "$in_path" = true ]; then
+                printf "  %d) %s ${YELLOW}(will be created)${NC} ${GREEN}[IN PATH]${NC}\n" $option_num "$user_local" >&2
+            else
+                printf "  %d) %s ${YELLOW}(will be created)${NC} ${RED}[NOT IN PATH]${NC}\n" $option_num "$user_local" >&2
+            fi
         else
-            printf "  %d) %s ${YELLOW}(will be created with sudo)${NC} %s\n" $option_num "$user_local" "$in_path_msg" >&2
+            if [ "$in_path" = true ]; then
+                printf "  %d) %s ${YELLOW}(will be created with sudo)${NC} ${GREEN}[IN PATH]${NC}\n" $option_num "$user_local" >&2
+            else
+                printf "  %d) %s ${YELLOW}(will be created with sudo)${NC} ${RED}[NOT IN PATH]${NC}\n" $option_num "$user_local" >&2
+            fi
         fi
         options_array[$option_num]="$user_local"
         option_num=$((option_num + 1))
@@ -155,23 +169,37 @@ choose_install_dir() {
     # Check ~/bin if not already listed
     if ! echo "$writable_dirs_list" | grep -q "^$user_bin$"; then
         # Check if directory is in PATH
-        local in_path_msg=""
+        local in_path=false
         if echo "$PATH" | tr ':' '\n' | grep -q "^$user_bin$"; then
-            in_path_msg="${GREEN}[IN PATH]${NC}"
-        else
-            in_path_msg="${RED}[NOT IN PATH]${NC}"
+            in_path=true
         fi
         
         if [ -d "$user_bin" ]; then
             if [ -w "$user_bin" ]; then
-                printf "  %d) %s ${GREEN}(writable)${NC} %s\n" $option_num "$user_bin" "$in_path_msg" >&2
+                if [ "$in_path" = true ]; then
+                    printf "  %d) %s ${GREEN}(writable)${NC} ${GREEN}[IN PATH]${NC}\n" $option_num "$user_bin" >&2
+                else
+                    printf "  %d) %s ${GREEN}(writable)${NC} ${RED}[NOT IN PATH]${NC}\n" $option_num "$user_bin" >&2
+                fi
             else
-                printf "  %d) %s ${YELLOW}(exists but requires sudo)${NC} %s\n" $option_num "$user_bin" "$in_path_msg" >&2
+                if [ "$in_path" = true ]; then
+                    printf "  %d) %s ${YELLOW}(exists but requires sudo)${NC} ${GREEN}[IN PATH]${NC}\n" $option_num "$user_bin" >&2
+                else
+                    printf "  %d) %s ${YELLOW}(exists but requires sudo)${NC} ${RED}[NOT IN PATH]${NC}\n" $option_num "$user_bin" >&2
+                fi
             fi
         elif can_create_dir "$user_bin"; then
-            printf "  %d) %s ${YELLOW}(will be created)${NC} %s\n" $option_num "$user_bin" "$in_path_msg" >&2
+            if [ "$in_path" = true ]; then
+                printf "  %d) %s ${YELLOW}(will be created)${NC} ${GREEN}[IN PATH]${NC}\n" $option_num "$user_bin" >&2
+            else
+                printf "  %d) %s ${YELLOW}(will be created)${NC} ${RED}[NOT IN PATH]${NC}\n" $option_num "$user_bin" >&2
+            fi
         else
-            printf "  %d) %s ${YELLOW}(will be created with sudo)${NC} %s\n" $option_num "$user_bin" "$in_path_msg" >&2
+            if [ "$in_path" = true ]; then
+                printf "  %d) %s ${YELLOW}(will be created with sudo)${NC} ${GREEN}[IN PATH]${NC}\n" $option_num "$user_bin" >&2
+            else
+                printf "  %d) %s ${YELLOW}(will be created with sudo)${NC} ${RED}[NOT IN PATH]${NC}\n" $option_num "$user_bin" >&2
+            fi
         fi
         options_array[$option_num]="$user_bin"
         option_num=$((option_num + 1))
@@ -180,21 +208,31 @@ choose_install_dir() {
     # Check /usr/local/bin if not already listed
     if ! echo "$writable_dirs_list" | grep -q "^$usr_local$"; then
         # Check if directory is in PATH
-        local in_path_msg=""
+        local in_path=false
         if echo "$PATH" | tr ':' '\n' | grep -q "^$usr_local$"; then
-            in_path_msg="${GREEN}[IN PATH]${NC}"
-        else
-            in_path_msg="${RED}[NOT IN PATH]${NC}"
+            in_path=true
         fi
         
         if [ -d "$usr_local" ]; then
             if [ -w "$usr_local" ]; then
-                printf "  %d) %s ${GREEN}(writable)${NC} %s\n" $option_num "$usr_local" "$in_path_msg" >&2
+                if [ "$in_path" = true ]; then
+                    printf "  %d) %s ${GREEN}(writable)${NC} ${GREEN}[IN PATH]${NC}\n" $option_num "$usr_local" >&2
+                else
+                    printf "  %d) %s ${GREEN}(writable)${NC} ${RED}[NOT IN PATH]${NC}\n" $option_num "$usr_local" >&2
+                fi
             else
-                printf "  %d) %s ${YELLOW}(requires sudo)${NC} %s\n" $option_num "$usr_local" "$in_path_msg" >&2
+                if [ "$in_path" = true ]; then
+                    printf "  %d) %s ${YELLOW}(requires sudo)${NC} ${GREEN}[IN PATH]${NC}\n" $option_num "$usr_local" >&2
+                else
+                    printf "  %d) %s ${YELLOW}(requires sudo)${NC} ${RED}[NOT IN PATH]${NC}\n" $option_num "$usr_local" >&2
+                fi
             fi
         else
-            printf "  %d) %s ${YELLOW}(will be created with sudo)${NC} %s\n" $option_num "$usr_local" "$in_path_msg" >&2
+            if [ "$in_path" = true ]; then
+                printf "  %d) %s ${YELLOW}(will be created with sudo)${NC} ${GREEN}[IN PATH]${NC}\n" $option_num "$usr_local" >&2
+            else
+                printf "  %d) %s ${YELLOW}(will be created with sudo)${NC} ${RED}[NOT IN PATH]${NC}\n" $option_num "$usr_local" >&2
+            fi
         fi
         options_array[$option_num]="$usr_local"
         option_num=$((option_num + 1))
