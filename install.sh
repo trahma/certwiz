@@ -522,6 +522,177 @@ install_binary() {
     rm -rf "$(dirname "${binary_path}")"
 }
 
+# Detect user's shell
+detect_shell() {
+    local shell_name=""
+    
+    # Try to detect from SHELL environment variable
+    if [[ -n "${SHELL}" ]]; then
+        shell_name="$(basename "${SHELL}")"
+    fi
+    
+    # Fallback to checking process
+    if [[ -z "${shell_name}" ]]; then
+        shell_name="$(ps -p $$ -o comm= 2>/dev/null | sed 's/^-//')"
+    fi
+    
+    # Normalize shell name
+    case "${shell_name}" in
+        bash*)  echo "bash" ;;
+        zsh*)   echo "zsh" ;;
+        fish*)  echo "fish" ;;
+        *)      echo "unknown" ;;
+    esac
+}
+
+# Get shell configuration file
+get_shell_config() {
+    local shell_type="$1"
+    local config_file=""
+    
+    case "${shell_type}" in
+        bash)
+            # Check common bash config files in order of preference
+            if [[ -f "${HOME}/.bashrc" ]]; then
+                config_file="${HOME}/.bashrc"
+            elif [[ -f "${HOME}/.bash_profile" ]]; then
+                config_file="${HOME}/.bash_profile"
+            elif [[ -f "${HOME}/.profile" ]]; then
+                config_file="${HOME}/.profile"
+            else
+                # Default to .bashrc if none exist
+                config_file="${HOME}/.bashrc"
+            fi
+            ;;
+        zsh)
+            # Check common zsh config files
+            if [[ -f "${HOME}/.zshrc" ]]; then
+                config_file="${HOME}/.zshrc"
+            elif [[ -f "${HOME}/.zprofile" ]]; then
+                config_file="${HOME}/.zprofile"
+            else
+                # Default to .zshrc if none exist
+                config_file="${HOME}/.zshrc"
+            fi
+            ;;
+        fish)
+            # Fish uses a standard config location
+            config_file="${HOME}/.config/fish/config.fish"
+            ;;
+        *)
+            # Unknown shell - suggest generic approach
+            config_file=""
+            ;;
+    esac
+    
+    echo "${config_file}"
+}
+
+# Add directory to PATH in shell config
+add_to_path() {
+    local install_dir="$1"
+    local shell_type="$(detect_shell)"
+    local config_file="$(get_shell_config "${shell_type}")"
+    
+    if [[ -z "${config_file}" ]]; then
+        info "Could not detect shell configuration file"
+        info "Please manually add the following to your shell configuration:"
+        echo ""
+        echo "  export PATH=\"${install_dir}:\$PATH\""
+        echo ""
+        return 1
+    fi
+    
+    # Check if we can read input
+    local can_read_input=false
+    if [ -t 0 ]; then
+        can_read_input=true
+    elif [ -e /dev/tty ]; then
+        if (exec < /dev/tty) 2>/dev/null; then
+            can_read_input=true
+        fi
+    fi
+    
+    if [ "$can_read_input" = false ]; then
+        info "Cannot read user input - skipping PATH configuration"
+        info "Please manually add ${install_dir} to your PATH"
+        return 1
+    fi
+    
+    # Prepare the PATH export line based on shell type
+    local path_line=""
+    case "${shell_type}" in
+        fish)
+            path_line="set -gx PATH ${install_dir} \$PATH"
+            ;;
+        *)
+            path_line="export PATH=\"${install_dir}:\$PATH\""
+            ;;
+    esac
+    
+    # Check if PATH entry already exists
+    if [[ -f "${config_file}" ]]; then
+        if grep -q "${install_dir}" "${config_file}" 2>/dev/null; then
+            info "PATH entry for ${install_dir} already exists in ${config_file}"
+            return 0
+        fi
+    fi
+    
+    # Ask user if they want to add it
+    printf "\n"
+    info "Would you like to add ${install_dir} to your PATH?"
+    info "This will add the following line to ${config_file}:"
+    echo ""
+    echo "  ${path_line}"
+    echo ""
+    prompt "Add to PATH? [y/N]: "
+    
+    local response=""
+    if [ -t 0 ]; then
+        read -r response
+    elif [ -e /dev/tty ]; then
+        read -r response < /dev/tty
+    fi
+    
+    if [[ "${response}" =~ ^[Yy]$ ]]; then
+        # Create config file if it doesn't exist
+        if [[ ! -f "${config_file}" ]]; then
+            if [[ "${shell_type}" == "fish" ]]; then
+                # Create fish config directory if needed
+                mkdir -p "$(dirname "${config_file}")"
+            fi
+            touch "${config_file}"
+        fi
+        
+        # Add PATH export line
+        echo "" >> "${config_file}"
+        echo "# Added by certwiz installer on $(date)" >> "${config_file}"
+        echo "${path_line}" >> "${config_file}"
+        
+        success "PATH configuration added to ${config_file}"
+        info "Please run the following to reload your configuration:"
+        case "${shell_type}" in
+            bash)
+                echo "  source ${config_file}"
+                ;;
+            zsh)
+                echo "  source ${config_file}"
+                ;;
+            fish)
+                echo "  source ${config_file}"
+                ;;
+        esac
+        echo ""
+        info "Or start a new terminal session"
+    else
+        info "Skipping PATH configuration"
+        info "You can manually add the following to your shell configuration:"
+        echo ""
+        echo "  ${path_line}"
+        echo ""
+    fi
+}
+
 # Verify installation
 verify_installation() {
     local install_path="${INSTALL_DIR}/${BINARY_NAME}"
@@ -540,11 +711,9 @@ verify_installation() {
     else
         warning "${BINARY_NAME} has been installed to ${install_path}"
         warning "However, ${INSTALL_DIR} is not in your PATH"
-        echo ""
-        info "Add ${INSTALL_DIR} to your PATH by adding this to your shell profile:"
-        echo "  export PATH=\"${INSTALL_DIR}:\$PATH\""
-        echo ""
-        info "Then reload your shell configuration or start a new terminal session."
+        
+        # Offer to add to PATH
+        add_to_path "${INSTALL_DIR}"
     fi
 }
 
