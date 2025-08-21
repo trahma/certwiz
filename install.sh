@@ -232,9 +232,16 @@ choose_install_dir() {
                 fi
                 
                 # Expand ~ to home directory if present
-                case "$custom_dir" in
-                    "~"*) custom_dir="$HOME${custom_dir#~}" ;;
-                esac
+                if [[ "$custom_dir" == "~/"* ]]; then
+                    # ~/path/to/dir -> $HOME/path/to/dir
+                    custom_dir="$HOME/${custom_dir:2}"  # Everything after ~/
+                elif [[ "$custom_dir" == "~" ]]; then
+                    # Just ~ -> home directory
+                    custom_dir="$HOME"
+                elif [[ "$custom_dir" == "~"* ]]; then
+                    # ~something -> $HOME/something (treating everything after ~ as a subdir)
+                    custom_dir="$HOME/${custom_dir:1}"  # Everything after ~
+                fi
                 
                 if [ -n "$custom_dir" ]; then
                     INSTALL_DIR="$custom_dir"
