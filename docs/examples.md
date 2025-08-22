@@ -10,7 +10,7 @@ Set up HTTPS for local development:
 
 ```bash
 # Generate certificate for local development
-certwiz generate --cn localhost \
+cert generate --cn localhost \
   --san localhost \
   --san "*.localhost" \
   --san myapp.local \
@@ -28,7 +28,7 @@ sudo cp localhost.crt /usr/local/share/ca-certificates/
 sudo update-ca-certificates
 
 # Verify it works
-certwiz verify localhost.crt --host localhost
+cert verify localhost.crt --host localhost
 ```
 
 ### Multi-domain Development Certificate
@@ -37,7 +37,7 @@ Create a certificate for multiple local domains:
 
 ```bash
 # Generate wildcard certificate for development
-certwiz generate --cn "dev.local" \
+cert generate --cn "dev.local" \
   --san "*.dev.local" \
   --san "*.app.local" \
   --san "*.test.local" \
@@ -78,7 +78,7 @@ CRITICAL_DAYS=7
 for domain in "${DOMAINS[@]}"; do
     echo "Checking $domain..."
     
-    output=$(certwiz inspect "$domain" 2>&1)
+    output=$(cert inspect "$domain" 2>&1)
     if [[ $? -ne 0 ]]; then
         echo "❌ ERROR: Cannot connect to $domain"
         continue
@@ -113,7 +113,7 @@ Generate and deploy certificate for Kubernetes:
 
 ```bash
 # Generate certificate
-certwiz generate --cn myapp.example.com \
+cert generate --cn myapp.example.com \
   --san myapp.example.com \
   --san www.myapp.example.com \
   --days 90
@@ -129,7 +129,7 @@ kubectl get secret myapp-tls -n production -o yaml | \
   grep tls.crt | awk '{print $2}' | \
   base64 -d > /tmp/k8s-cert.pem
 
-certwiz inspect /tmp/k8s-cert.pem
+cert inspect /tmp/k8s-cert.pem
 ```
 
 ### Docker Container SSL
@@ -138,7 +138,7 @@ Set up SSL for containerized applications:
 
 ```bash
 # Generate certificate
-certwiz generate --cn docker.local \
+cert generate --cn docker.local \
   --san docker.local \
   --san "*.docker.local" \
   --san IP:172.17.0.1
@@ -152,7 +152,7 @@ docker run -d \
   myapp:latest
 
 # Verify from host
-certwiz inspect docker.local:443
+cert inspect docker.local:443
 ```
 
 ## Security & Compliance
@@ -176,7 +176,7 @@ check_compliance() {
     echo "Auditing: $cert_file"
     
     # Get full certificate details
-    details=$(certwiz inspect "$cert_file" --full)
+    details=$(cert inspect "$cert_file" --full)
     
     # Check key size
     key_info=$(echo "$details" | grep "Public Key" | grep -oE '[0-9]+ bits')
@@ -224,15 +224,15 @@ Verify complete certificate chains:
 domain="secure.example.com"
 
 # Get the certificate and chain
-certwiz inspect $domain --chain > chain-analysis.txt
+cert inspect $domain --chain > chain-analysis.txt
 
 # Extract each certificate
-certwiz inspect $domain --full | grep -A 100 "Certificate Chain" > chain.txt
+cert inspect $domain --full | grep -A 100 "Certificate Chain" > chain.txt
 
 # Verify each link in the chain
 echo "Verifying chain for $domain"
-certwiz verify server.crt --ca intermediate.crt
-certwiz verify intermediate.crt --ca root.crt
+cert verify server.crt --ca intermediate.crt
+cert verify intermediate.crt --ca root.crt
 ```
 
 ## Troubleshooting
@@ -246,16 +246,16 @@ Diagnose connection problems:
 problem_site="https://broken.example.com:8443"
 
 echo "=== Basic Connection Test ==="
-certwiz inspect $problem_site 2>&1
+cert inspect $problem_site 2>&1
 
 echo -e "\n=== Certificate Details ==="
-certwiz inspect $problem_site --full 2>&1
+cert inspect $problem_site --full 2>&1
 
 echo -e "\n=== Certificate Chain ==="
-certwiz inspect $problem_site --chain 2>&1
+cert inspect $problem_site --chain 2>&1
 
 echo -e "\n=== Common Issues to Check ==="
-output=$(certwiz inspect $problem_site 2>&1)
+output=$(cert inspect $problem_site 2>&1)
 
 # Check for expired certificate
 if echo "$output" | grep -q "EXPIRED"; then
@@ -269,7 +269,7 @@ fi
 
 # Check SANs match
 echo -e "\n=== SAN Verification ==="
-certwiz inspect $problem_site | grep -A10 "SANs"
+cert inspect $problem_site | grep -A10 "SANs"
 ```
 
 ### Certificate Migration
@@ -283,14 +283,14 @@ NEW_SERVER="new.server.com"
 
 # Inspect current certificate
 echo "Current certificate on $OLD_SERVER:"
-certwiz inspect $OLD_SERVER
+cert inspect $OLD_SERVER
 
 # After migration, verify new setup
 echo "New certificate on $NEW_SERVER:"
-certwiz inspect $NEW_SERVER
+cert inspect $NEW_SERVER
 
 # Compare certificates
-diff <(certwiz inspect $OLD_SERVER) <(certwiz inspect $NEW_SERVER)
+diff <(cert inspect $OLD_SERVER) <(cert inspect $NEW_SERVER)
 ```
 
 ## API & Microservices
@@ -301,24 +301,24 @@ Set up mutual TLS for microservices:
 
 ```bash
 # Generate CA certificate
-certwiz generate --cn "MicroServices CA" \
+cert generate --cn "MicroServices CA" \
   --days 3650 \
   --key-size 4096
 
 # Generate server certificate
-certwiz generate --cn api.internal \
+cert generate --cn api.internal \
   --san api.internal \
   --san "*.api.internal" \
   --days 365
 
 # Generate client certificate
-certwiz generate --cn client.internal \
+cert generate --cn client.internal \
   --san client.internal \
   --days 365
 
 # Verify the certificates
-certwiz verify api.internal.crt --host api.internal
-certwiz verify client.internal.crt --host client.internal
+cert verify api.internal.crt --host api.internal
+cert verify client.internal.crt --host client.internal
 ```
 
 ### API Gateway Certificate
@@ -327,7 +327,7 @@ Configure API gateway with proper certificates:
 
 ```bash
 # Generate certificate for API gateway
-certwiz generate --cn api.company.com \
+cert generate --cn api.company.com \
   --san api.company.com \
   --san api-v1.company.com \
   --san api-v2.company.com \
@@ -336,7 +336,7 @@ certwiz generate --cn api.company.com \
 
 # Verify certificate covers all endpoints
 for endpoint in api api-v1 api-v2 api-staging; do
-    certwiz verify api.company.com.crt --host $endpoint.company.com
+    cert verify api.company.com.crt --host $endpoint.company.com
 done
 ```
 
@@ -366,10 +366,10 @@ jobs:
           domains="api.example.com www.example.com admin.example.com"
           for domain in $domains; do
             echo "Checking $domain..."
-            certwiz inspect $domain || exit 1
+            cert inspect $domain || exit 1
             
             # Fail if expiring soon
-            output=$(certwiz inspect $domain)
+            output=$(cert inspect $domain)
             if echo "$output" | grep -E "EXPIRING SOON|EXPIRED"; then
               echo "::error::Certificate issue for $domain"
               exit 1
@@ -384,7 +384,7 @@ jobs:
             echo ""
             for domain in api.example.com www.example.com; do
               echo "## $domain"
-              certwiz inspect $domain
+              cert inspect $domain
               echo ""
             done
           } > certificate-report.md
@@ -420,10 +420,10 @@ pipeline {
                     domains.each { domain ->
                         sh """
                             echo "Checking ${domain}..."
-                            certwiz inspect ${domain}
+                            cert inspect ${domain}
                             
                             # Extract days remaining
-                            days=\$(certwiz inspect ${domain} | grep -oE '[0-9]+ days remaining' | awk '{print \$1}')
+                            days=\$(cert inspect ${domain} | grep -oE '[0-9]+ days remaining' | awk '{print \$1}')
                             
                             if [ "\$days" -lt "30" ]; then
                                 echo "WARNING: ${domain} expires in \$days days"
@@ -441,7 +441,7 @@ pipeline {
             }
             steps {
                 sh '''
-                    certwiz generate --cn jenkins.local \
+                    cert generate --cn jenkins.local \
                         --san jenkins.local \
                         --san "*.jenkins.local" \
                         --days 365
@@ -472,13 +472,13 @@ Verify certificates in AWS environment:
 # Check ALB certificates
 for alb in $(aws elbv2 describe-load-balancers --query 'LoadBalancers[*].DNSName' --output text); do
     echo "Checking ALB: $alb"
-    certwiz inspect $alb:443
+    cert inspect $alb:443
 done
 
 # Check CloudFront distributions
 for dist in $(aws cloudfront list-distributions --query 'DistributionList.Items[*].DomainName' --output text); do
     echo "Checking CloudFront: $dist"
-    certwiz inspect $dist
+    cert inspect $dist
 done
 ```
 
@@ -488,7 +488,7 @@ done
 # Check Azure App Service certificates
 az webapp list --query '[].{name:name, url:defaultHostName}' -o tsv | while read name url; do
     echo "Checking $name at $url"
-    certwiz inspect $url
+    cert inspect $url
 done
 ```
 
@@ -500,6 +500,6 @@ gcloud compute ssl-certificates list --format="value(name)" | while read cert; d
     echo "Checking certificate: $cert"
     # Export and check
     gcloud compute ssl-certificates describe $cert --format="get(certificate)" > /tmp/$cert.pem
-    certwiz inspect /tmp/$cert.pem
+    cert inspect /tmp/$cert.pem
 done
 ```

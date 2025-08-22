@@ -18,7 +18,7 @@ Inspect a certificate from a file or URL.
 ### Synopsis
 
 ```bash
-certwiz inspect [file|url] [flags]
+cert inspect [file|url] [flags]
 ```
 
 ### Options
@@ -38,24 +38,24 @@ certwiz inspect [file|url] [flags]
 
 ```bash
 # Inspect local certificate file
-certwiz inspect server.crt
-certwiz inspect /path/to/certificate.pem
+cert inspect server.crt
+cert inspect /path/to/certificate.pem
 
 # Inspect remote certificate
-certwiz inspect google.com
-certwiz inspect https://example.com
-certwiz inspect api.example.com:8443
+cert inspect google.com
+cert inspect https://example.com
+cert inspect api.example.com:8443
 
 # With options
-certwiz inspect google.com --full
-certwiz inspect github.com --chain
-certwiz inspect example.com --full --chain
-certwiz inspect internal.service --port 8443
+cert inspect google.com --full
+cert inspect github.com --chain
+cert inspect example.com --full --chain
+cert inspect internal.service --port 8443
 
 # Through proxy or tunnel
-certwiz inspect api.example.com --connect localhost:8080
-certwiz inspect prod.internal --connect tunnel.local --port 443
-certwiz inspect backend.local --connect 127.0.0.1:3000
+cert inspect api.example.com --connect localhost:8080
+cert inspect prod.internal --connect tunnel.local --port 443
+cert inspect backend.local --connect 127.0.0.1:3000
 ```
 
 ### Connect Flag Usage
@@ -105,7 +105,7 @@ Generate a self-signed certificate.
 ### Synopsis
 
 ```bash
-certwiz generate [flags]
+cert generate [flags]
 ```
 
 ### Options
@@ -129,22 +129,22 @@ SANs can be specified as:
 
 ```bash
 # Basic certificate
-certwiz generate --cn myapp.local
+cert generate --cn myapp.local
 
 # With multiple SANs
-certwiz generate --cn myapp.local \
+cert generate --cn myapp.local \
   --san myapp.local \
   --san "*.myapp.local" \
   --san localhost \
   --san IP:127.0.0.1
 
 # Custom validity and key size
-certwiz generate --cn secure.app \
+cert generate --cn secure.app \
   --days 730 \
   --key-size 4096
 
 # Output to specific directory
-certwiz generate --cn myapp.local \
+cert generate --cn myapp.local \
   --output /etc/ssl/certs/
 ```
 
@@ -161,7 +161,7 @@ Convert certificate between PEM and DER formats.
 ### Synopsis
 
 ```bash
-certwiz convert <input> <output> [flags]
+cert convert <input> <output> [flags]
 ```
 
 ### Options
@@ -179,13 +179,13 @@ certwiz convert <input> <output> [flags]
 
 ```bash
 # PEM to DER
-certwiz convert certificate.pem certificate.der --format der
+cert convert certificate.pem certificate.der --format der
 
 # DER to PEM
-certwiz convert certificate.der certificate.pem --format pem
+cert convert certificate.der certificate.pem --format pem
 
 # Auto-detect input format
-certwiz convert input.crt output.der --format der
+cert convert input.crt output.der --format der
 ```
 
 ### Format Detection
@@ -202,7 +202,7 @@ Verify a certificate's validity and optionally check against a hostname.
 ### Synopsis
 
 ```bash
-certwiz verify <certificate> [flags]
+cert verify <certificate> [flags]
 ```
 
 ### Options
@@ -220,16 +220,16 @@ certwiz verify <certificate> [flags]
 
 ```bash
 # Basic verification
-certwiz verify server.crt
+cert verify server.crt
 
 # Verify hostname match
-certwiz verify server.crt --host example.com
+cert verify server.crt --host example.com
 
 # Verify against CA
-certwiz verify server.crt --ca ca-bundle.crt
+cert verify server.crt --ca ca-bundle.crt
 
 # Complete verification
-certwiz verify server.crt \
+cert verify server.crt \
   --host api.example.com \
   --ca /etc/ssl/certs/ca-bundle.crt
 ```
@@ -332,23 +332,23 @@ Generate shell completion scripts.
 ### Synopsis
 
 ```bash
-certwiz completion [bash|zsh|fish|powershell]
+cert completion [bash|zsh|fish|powershell]
 ```
 
 ### Examples
 
 ```bash
 # Bash
-certwiz completion bash > /etc/bash_completion.d/certwiz
+cert completion bash > /etc/bash_completion.d/cert
 
 # Zsh
-certwiz completion zsh > "${fpath[1]}/_certwiz"
+cert completion zsh > "${fpath[1]}/_cert"
 
 # Fish
-certwiz completion fish > ~/.config/fish/completions/certwiz.fish
+cert completion fish > ~/.config/fish/completions/cert.fish
 
 # PowerShell
-certwiz completion powershell | Out-String | Invoke-Expression
+cert completion powershell | Out-String | Invoke-Expression
 ```
 
 ## Environment Variables
@@ -365,14 +365,14 @@ certwiz respects these environment variables:
 
 ```bash
 # Disable colors
-NO_COLOR=1 certwiz inspect google.com
+NO_COLOR=1 cert inspect google.com
 
 # Force colors in pipe
-FORCE_COLOR=1 certwiz inspect google.com | less -R
+FORCE_COLOR=1 cert inspect google.com | less -R
 
 # Set default port
 export CERTWIZ_PORT=8443
-certwiz inspect internal.service
+cert inspect internal.service
 ```
 
 ## Output Formats
@@ -394,13 +394,13 @@ When output is piped, certwiz:
 
 ```bash
 # Search for specific information
-certwiz inspect google.com | grep "Valid To"
+cert inspect google.com | grep "Valid To"
 
 # Save to file
-certwiz inspect example.com --full > cert-details.txt
+cert inspect example.com --full > cert-details.txt
 
 # Process with jq (future JSON support)
-# certwiz inspect example.com --json | jq '.subject'
+# cert inspect example.com --json | jq '.subject'
 ```
 
 ## Advanced Usage
@@ -410,17 +410,17 @@ certwiz inspect example.com --full > cert-details.txt
 ```bash
 # Check multiple domains
 for domain in $(cat domains.txt); do
-  certwiz inspect "$domain" | grep Status
+  cert inspect "$domain" | grep Status
 done
 
 # Generate multiple certificates
 while IFS= read -r domain; do
-  certwiz generate --cn "$domain" --san "$domain"
+  cert generate --cn "$domain" --san "$domain"
 done < domains.txt
 
 # Convert all certificates in directory
 for cert in *.pem; do
-  certwiz convert "$cert" "${cert%.pem}.der" --format der
+  cert convert "$cert" "${cert%.pem}.der" --format der
 done
 ```
 
@@ -428,13 +428,13 @@ done
 
 ```bash
 # With OpenSSL
-certwiz inspect example.com --full | grep -A2 "Key Usage"
+cert inspect example.com --full | grep -A2 "Key Usage"
 
 # With curl
-curl -k https://example.com/cert.pem | certwiz inspect -
+curl -k https://example.com/cert.pem | cert inspect -
 
 # With find
-find /etc/ssl -name "*.crt" -exec certwiz verify {} \;
+find /etc/ssl -name "*.crt" -exec cert verify {} \;
 ```
 
 ### Scripting
@@ -445,7 +445,7 @@ find /etc/ssl -name "*.crt" -exec certwiz verify {} \;
 
 check_cert() {
   local domain=$1
-  local output=$(certwiz inspect "$domain" 2>&1)
+  local output=$(cert inspect "$domain" 2>&1)
   
   if [[ $? -ne 0 ]]; then
     echo "ERROR: Failed to check $domain"
