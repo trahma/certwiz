@@ -78,6 +78,12 @@ func InspectURLWithConnect(targetURL string, port int, connectHost string) (*Cer
 
 // InspectURLWithConnectTimeout connects with a specific timeout.
 func InspectURLWithConnectTimeout(targetURL string, port int, connectHost string, timeout time.Duration) (*Certificate, []*Certificate, error) {
+    return InspectURLWithOptions(targetURL, port, connectHost, timeout, "auto")
+}
+
+// InspectURLWithOptions connects with a specific timeout and signature algorithm preference.
+// sigAlg can be "auto", "ecdsa", or "rsa" to control cipher suite selection.
+func InspectURLWithOptions(targetURL string, port int, connectHost string, timeout time.Duration, sigAlg string) (*Certificate, []*Certificate, error) {
     // Parse and normalize URL
     if !strings.Contains(targetURL, "://") {
         targetURL = "https://" + targetURL
@@ -105,12 +111,48 @@ func InspectURLWithConnectTimeout(targetURL string, port int, connectHost string
 		}
 	}
 
-    // Connect with TLS using a timeout to avoid hanging
-    dialer := &net.Dialer{Timeout: timeout}
-    conn, err := tls.DialWithDialer(dialer, "tcp", dialHost, &tls.Config{
+    // Configure TLS with cipher suite preferences based on signature algorithm
+    tlsConfig := &tls.Config{
         InsecureSkipVerify: true, // We want to inspect even invalid certs
         ServerName:         serverName, // Use the target hostname for SNI
-    })
+    }
+    
+    // Set cipher suites based on signature algorithm preference
+    switch strings.ToLower(sigAlg) {
+    case "ecdsa":
+        // Only ECDSA cipher suites - server will be forced to use ECDSA cert if available
+        tlsConfig.CipherSuites = []uint16{
+            tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
+            tls.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
+            tls.TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305,
+            tls.TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256,
+            tls.TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA,
+            tls.TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA,
+        }
+        // Ensure we don't negotiate TLS 1.3 where cipher suites don't control cert selection
+        tlsConfig.MaxVersion = tls.VersionTLS12
+    case "rsa":
+        // Only RSA cipher suites - server will be forced to use RSA cert if available
+        tlsConfig.CipherSuites = []uint16{
+            tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+            tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+            tls.TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305,
+            tls.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256,
+            tls.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA,
+            tls.TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA,
+            tls.TLS_RSA_WITH_AES_128_GCM_SHA256,
+            tls.TLS_RSA_WITH_AES_256_GCM_SHA384,
+        }
+        // Ensure we don't negotiate TLS 1.3 where cipher suites don't control cert selection
+        tlsConfig.MaxVersion = tls.VersionTLS12
+    default:
+        // "auto" or any other value - use default cipher suites
+        // Let Go choose the best cipher suites
+    }
+    
+    // Connect with TLS using a timeout to avoid hanging
+    dialer := &net.Dialer{Timeout: timeout}
+    conn, err := tls.DialWithDialer(dialer, "tcp", dialHost, tlsConfig)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to connect: %w", err)
 	}

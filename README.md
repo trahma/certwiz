@@ -49,6 +49,10 @@ cert inspect github.com --chain
 # Inspect through a proxy or tunnel
 cert inspect api.example.com --connect localhost:8080
 cert inspect internal.site --connect tunnel.local --port 443
+
+# Force specific certificate type (for dual-cert servers)
+cert inspect cloudflare.com --sig-alg ecdsa  # Get ECDSA certificate
+cert inspect cloudflare.com --sig-alg rsa    # Get RSA certificate
 ```
 
 ## 📦 Installation
@@ -172,6 +176,7 @@ cert inspect cert.pem --json | jq '.days_until_expiry'
 - Displays full certificate chain with `--chain`
 - Shows detailed extensions with `--full`
 - Connect through proxies/tunnels with `--connect` flag
+- Force ECDSA or RSA certificate selection with `--sig-alg` flag
 
 ### Certificate Generation
 - Create self-signed certificates instantly

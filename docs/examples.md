@@ -272,6 +272,50 @@ echo -e "\n=== SAN Verification ==="
 cert inspect $problem_site | grep -A10 "SANs"
 ```
 
+### Test Dual-Certificate Configurations
+
+Test servers that support both ECDSA and RSA certificates:
+
+```bash
+# Check which certificate types are available
+echo "=== Testing ECDSA Certificate ==="
+cert inspect cloudflare.com --sig-alg ecdsa | grep "Public Key"
+
+echo -e "\n=== Testing RSA Certificate ==="
+cert inspect cloudflare.com --sig-alg rsa | grep "Public Key"
+
+# Script to verify dual-cert setup
+test_dual_certs() {
+    local domain=$1
+    
+    echo "Testing dual-certificate configuration for $domain"
+    
+    # Try ECDSA
+    ecdsa_result=$(cert inspect $domain --sig-alg ecdsa 2>&1)
+    if echo "$ecdsa_result" | grep -q "ECDSA"; then
+        echo "✓ ECDSA certificate available"
+        echo "$ecdsa_result" | grep "Public Key"
+    else
+        echo "✗ No ECDSA certificate"
+    fi
+    
+    # Try RSA  
+    rsa_result=$(cert inspect $domain --sig-alg rsa 2>&1)
+    if echo "$rsa_result" | grep -q "RSA"; then
+        echo "✓ RSA certificate available"
+        echo "$rsa_result" | grep "Public Key"
+    else
+        echo "✗ No RSA certificate"
+    fi
+}
+
+# Test multiple domains
+for domain in cloudflare.com google.com github.com; do
+    test_dual_certs $domain
+    echo "---"
+done
+```
+
 ### Certificate Migration
 
 Migrate certificates between systems:

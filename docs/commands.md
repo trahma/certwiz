@@ -31,6 +31,7 @@ cert inspect [file|url] [flags]
 | `--port` | `-p` | Port for remote inspection | `443` |
 | `--connect` | | Connect to a different host while validating cert for target | |
 | `--timeout` | | Network timeout for remote inspection (e.g., `5s`) | `5s` |
+| `--sig-alg` | | Preferred signature algorithm: auto, ecdsa, or rsa (TLS 1.2 only) | `auto` |
 
 Note: inspect uses a 5s network connect timeout by default to avoid hangs.
 
@@ -60,7 +61,24 @@ cert inspect internal.service --port 8443
 cert inspect api.example.com --connect localhost:8080
 cert inspect prod.internal --connect tunnel.local --port 443
 cert inspect backend.local --connect 127.0.0.1:3000
+
+# Force specific signature algorithm (for servers with both ECDSA and RSA certs)
+cert inspect cloudflare.com --sig-alg ecdsa  # Forces ECDSA certificate
+cert inspect cloudflare.com --sig-alg rsa    # Forces RSA certificate
+cert inspect cloudflare.com --sig-alg auto   # Let server choose (default)
 ```
+
+### Signature Algorithm Flag Usage
+
+The `--sig-alg` flag controls which cipher suites are advertised in the TLS ClientHello:
+- `auto` (default): Uses all available cipher suites, server chooses based on preference
+- `ecdsa`: Only advertises ECDSA-compatible cipher suites, forcing ECDSA certificate if available
+- `rsa`: Only advertises RSA-compatible cipher suites, forcing RSA certificate if available
+
+**Important Notes:**
+- This flag only works with TLS 1.2 and below (TLS 1.3 handles signatures differently)
+- Servers must have both ECDSA and RSA certificates configured for this to have an effect
+- Useful for testing dual-certificate configurations and debugging certificate selection issues
 
 ### Connect Flag Usage
 

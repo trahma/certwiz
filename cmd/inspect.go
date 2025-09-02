@@ -18,6 +18,7 @@ var (
     inspectChain   bool
     inspectConnect string
     inspectTimeout string
+    inspectSigAlg  string
 )
 
 var inspectCmd = &cobra.Command{
@@ -36,7 +37,9 @@ Examples:
   cert inspect https://example.com:8443 --port 8443
   cert inspect 192.168.1.1:443
   cert inspect google.com --connect localhost:8080
-  cert inspect api.example.com --connect tunnel.local --port 443`,
+  cert inspect api.example.com --connect tunnel.local --port 443
+  cert inspect cloudflare.com --sig-alg ecdsa
+  cert inspect cloudflare.com --sig-alg rsa`,
 	Args: cobra.ExactArgs(1),
     RunE: func(cmd *cobra.Command, args []string) error {
         target := args[0]
@@ -98,8 +101,8 @@ Examples:
                 }
             }
 
-			// Use the enhanced function that supports connect host and timeout
-            certificate, chain, err := cert.InspectURLWithConnectTimeout(target, port, connectHost, timeout)
+			// Use the enhanced function that supports connect host, timeout, and signature algorithm preference
+            certificate, chain, err := cert.InspectURLWithOptions(target, port, connectHost, timeout, inspectSigAlg)
             if err != nil {
                 if jsonOutput {
                     printJSONError(err)
@@ -146,4 +149,5 @@ func init() {
     inspectCmd.Flags().BoolVar(&inspectChain, "chain", false, "Show certificate chain")
     inspectCmd.Flags().StringVar(&inspectConnect, "connect", "", "Connect to a different host (e.g., localhost:8080) while validating the cert for the target hostname")
     inspectCmd.Flags().StringVar(&inspectTimeout, "timeout", "5s", "Network timeout for remote inspection (e.g., 5s, 2s)")
+    inspectCmd.Flags().StringVar(&inspectSigAlg, "sig-alg", "auto", "Preferred signature algorithm: auto, ecdsa, or rsa (TLS 1.2 only)")
 }

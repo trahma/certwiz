@@ -88,6 +88,40 @@ cert inspect example.com --full --chain
 cert inspect api.example.com:8443 --full
 ```
 
+### Advanced Inspection Options
+
+#### Inspect Through Proxy or Tunnel
+
+Connect to a different host while validating the certificate for the target:
+
+```bash
+# Through SSH tunnel
+cert inspect api.internal.com --connect localhost:8080
+
+# Through proxy
+cert inspect prod.service --connect proxy.local:443
+
+# Different port
+cert inspect backend.local --connect 127.0.0.1:3000 --port 443
+```
+
+#### Force Certificate Type Selection
+
+For servers with both ECDSA and RSA certificates, force selection:
+
+```bash
+# Force ECDSA certificate (if available)
+cert inspect cloudflare.com --sig-alg ecdsa
+
+# Force RSA certificate (if available)
+cert inspect cloudflare.com --sig-alg rsa
+
+# Auto selection (default - server chooses)
+cert inspect cloudflare.com --sig-alg auto
+```
+
+**Note**: The `--sig-alg` flag only works with TLS 1.2 and below. TLS 1.3 handles certificate selection differently.
+
 ## Generating Certificates
 
 ### Basic Self-Signed Certificate

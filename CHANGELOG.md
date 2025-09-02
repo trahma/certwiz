@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.1] - 2025-09-02
+
+### Added
+- **Signature algorithm selection for `inspect` command**
+  - New `--sig-alg` flag to force ECDSA or RSA certificate selection
+  - Supports values: `auto` (default), `ecdsa`, `rsa`
+  - Works by controlling cipher suite advertisement in TLS ClientHello
+  - Useful for testing servers with dual-certificate configurations
+  - Only affects TLS 1.2 and below (TLS 1.3 handles signatures differently)
+
+### Documentation
+- Added examples for `--sig-alg` flag usage
+- Updated command reference with new flag details
+- Added explanation of signature algorithm selection mechanism
+
 ## [0.2.0] - 2025-09-02
 
 ### Added
