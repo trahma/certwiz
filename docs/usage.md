@@ -100,6 +100,8 @@ Creates:
 - `myapp.local.crt` - Certificate file
 - `myapp.local.key` - Private key file
 
+Note: On Unix-like systems, private keys are created with `0600` permissions.
+
 ### With Subject Alternative Names (SANs)
 
 ```bash
@@ -233,6 +235,22 @@ EXPIRED (10 days ago)               # Certificate has expired
 - [CRITICAL] Extension that must be understood
 
 ## Tips and Tricks
+
+## JSON Output
+
+Use `--json` to integrate with scripts and tools:
+
+```bash
+# Inspect with JSON
+cert inspect google.com --json | jq '.subject.common_name'
+
+# Verify with JSON
+cert verify server.crt --host example.com --json | jq '.is_valid'
+
+# Generate and consume file paths
+cert generate --cn test.local --json | jq -r '.files[]'
+```
+
 
 ### Quick Domain Check
 

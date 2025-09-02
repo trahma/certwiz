@@ -9,6 +9,7 @@ These options work with all commands:
 ```
 -h, --help      Show help for any command
     --version   Show version information
+    --json      Output machine-readable JSON
 ```
 
 ## inspect
@@ -29,6 +30,9 @@ cert inspect [file|url] [flags]
 | `--chain` | | Show certificate chain (for URLs only) | `false` |
 | `--port` | `-p` | Port for remote inspection | `443` |
 | `--connect` | | Connect to a different host while validating cert for target | |
+| `--timeout` | | Network timeout for remote inspection (e.g., `5s`) | `5s` |
+
+Note: inspect uses a 5s network connect timeout by default to avoid hangs.
 
 ### Arguments
 
@@ -154,6 +158,8 @@ The generate command creates:
 - `{cn}.crt` - Certificate file in PEM format
 - `{cn}.key` - Private key file in PEM format
 
+On Unix-like systems, private key files are written with `0600` permissions.
+
 ## convert
 
 Convert certificate between PEM and DER formats.
@@ -210,7 +216,7 @@ cert verify <certificate> [flags]
 | Flag | Short | Description | Default |
 |------|-------|-------------|---------|
 | `--host` | | Hostname to verify against | |
-| `--ca` | | CA certificate for chain verification | |
+| `--ca` | | CA certificate (PEM or DER) for chain verification | |
 
 ### Arguments
 
@@ -255,12 +261,8 @@ The verify command performs:
 
 ### Exit Codes
 
-All commands use standard exit codes:
-
 - `0` - Success
-- `1` - General error
-- `2` - Invalid arguments
-- `3` - Certificate validation failed
+- Non-zero - Error (verification or runtime issues)
 
 ## update
 
@@ -385,22 +387,29 @@ Human-readable formatted output with:
 - Status indicators
 - Smart text wrapping
 
-### Piping and Redirection
+### JSON Output
 
-When output is piped, certwiz:
-- Maintains structure but may reduce colors
-- Preserves all information
-- Suitable for grep/awk/sed processing
+All commands support `--json` for machine-readable output.
+
+```bash
+# Inspect with JSON
+cert inspect google.com --json | jq '.subject.common_name'
+
+# Verify with JSON
+cert verify server.crt --host example.com --json | jq '.is_valid'
+
+# Generate and list output files
+cert generate --cn myapp.local --json | jq '.files[]'
+```
+
+### Piping and Redirection
 
 ```bash
 # Search for specific information
 cert inspect google.com | grep "Valid To"
 
-# Save to file
+# Save human-readable output
 cert inspect example.com --full > cert-details.txt
-
-# Process with jq (future JSON support)
-# cert inspect example.com --json | jq '.subject'
 ```
 
 ## Advanced Usage

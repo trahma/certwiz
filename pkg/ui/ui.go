@@ -6,11 +6,11 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"fmt"
-	"os"
 	"strings"
 	"time"
 
 	"certwiz/pkg/cert"
+    env "certwiz/internal/environ"
 
 	"github.com/charmbracelet/lipgloss"
 	"golang.org/x/term"
@@ -58,7 +58,7 @@ var (
 // getPanelStyle returns the appropriate panel style based on environment
 func getPanelStyle() lipgloss.Style {
 	// Check if we're in a CI environment or terminal doesn't support Unicode
-	if isCI() || !supportsUnicode() {
+	if env.IsCI() || !env.SupportsUnicode() {
 		// Use ASCII borders for CI environments
 		return lipgloss.NewStyle().
 			Border(lipgloss.NormalBorder()).
@@ -72,37 +72,7 @@ func getPanelStyle() lipgloss.Style {
 		Padding(1, 2)
 }
 
-// isCI checks if we're running in a CI environment
-func isCI() bool {
-	// Check common CI environment variables
-	ciVars := []string{"CI", "CONTINUOUS_INTEGRATION", "GITHUB_ACTIONS", "GITLAB_CI", "JENKINS", "CIRCLECI"}
-	for _, v := range ciVars {
-		if os.Getenv(v) != "" {
-			return true
-		}
-	}
-	return false
-}
-
-// supportsUnicode checks if the terminal supports Unicode
-func supportsUnicode() bool {
-	// Check TERM environment variable
-	term := os.Getenv("TERM")
-	if term == "dumb" || term == "" {
-		return false
-	}
-
-	// Check LANG/LC_ALL for UTF-8 support
-	lang := os.Getenv("LANG")
-	if lang == "" {
-		lang = os.Getenv("LC_ALL")
-	}
-	if lang != "" && !strings.Contains(strings.ToLower(lang), "utf") {
-		return false
-	}
-
-	return true
-}
+// isCI/supportsUnicode logic moved to internal/env
 
 // DisplayCertificate shows certificate information in a formatted table
 func DisplayCertificate(cert *cert.Certificate, showFull bool) {
@@ -180,7 +150,7 @@ func DisplayCertificate(cert *cert.Certificate, showFull bool) {
 // DisplayGenerationResult shows the result of certificate generation
 func DisplayGenerationResult(certPath, keyPath string) {
 	checkmark := "✓"
-	if isCI() {
+    if env.IsCI() {
 		checkmark = "[OK]"
 	}
 	fmt.Println(successStyle.Render(fmt.Sprintf("%s Certificate generated successfully!", checkmark)))
@@ -198,7 +168,7 @@ func DisplayGenerationResult(certPath, keyPath string) {
 // DisplayConversionResult shows the result of certificate conversion
 func DisplayConversionResult(inputPath, outputPath, fromFormat, toFormat string) {
 	checkmark := "✓"
-	if isCI() {
+    if env.IsCI() {
 		checkmark = "[OK]"
 	}
 	fmt.Println(successStyle.Render(fmt.Sprintf("%s Converted from %s to %s", checkmark, strings.ToUpper(fromFormat), strings.ToUpper(toFormat))))
@@ -222,7 +192,7 @@ func DisplayVerificationResult(result *cert.VerificationResult) {
 	// Overall status
 	checkmark := "✓"
 	crossMark := "✗"
-	if isCI() {
+    if env.IsCI() {
 		checkmark = "[OK]"
 		crossMark = "[FAIL]"
 	}
@@ -236,9 +206,9 @@ func DisplayVerificationResult(result *cert.VerificationResult) {
 	// Show errors
 	if len(result.Errors) > 0 {
 		crossMark := "✗"
-		if isCI() {
-			crossMark = "[X]"
-		}
+    if env.IsCI() {
+		crossMark = "[X]"
+	}
 		fmt.Println(errorStyle.Render("Errors:"))
 		for _, err := range result.Errors {
 			fmt.Printf("  %s %s\n", errorStyle.Render(crossMark), err)
@@ -249,9 +219,9 @@ func DisplayVerificationResult(result *cert.VerificationResult) {
 	// Show warnings
 	if len(result.Warnings) > 0 {
 		warnSymbol := "⚠"
-		if isCI() {
-			warnSymbol = "[!]"
-		}
+    if env.IsCI() {
+		warnSymbol = "[!]"
+	}
 		fmt.Println(warningStyle.Render("Warnings:"))
 		for _, warning := range result.Warnings {
 			fmt.Printf("  %s %s\n", warningStyle.Render(warnSymbol), warning)
@@ -268,7 +238,7 @@ func DisplayVerificationResult(result *cert.VerificationResult) {
 	// Date checks
 	checkmark2 := "✓"
 	crossMark2 := "✗"
-	if isCI() {
+    if env.IsCI() {
 		checkmark2 = "[OK]"
 		crossMark2 = "[X]"
 	}
@@ -544,7 +514,7 @@ func displayParsedExtensions(cert *x509.Certificate) {
 		checkmark := "✓"
 		crossMark := "✗"
 		arrow := "→"
-		if isCI() {
+		if env.IsCI() {
 			checkmark = "[OK]"
 			crossMark = "[X]"
 			arrow = "->"
@@ -566,7 +536,7 @@ func displayParsedExtensions(cert *x509.Certificate) {
 	// We show a summary here since full list is in main display
 	if len(cert.DNSNames) > 0 || len(cert.IPAddresses) > 0 || len(cert.EmailAddresses) > 0 || len(cert.URIs) > 0 {
 		arrow := "→"
-		if isCI() {
+		if env.IsCI() {
 			arrow = "->"
 		}
 		fmt.Println(keyStyle.Render("Subject Alternative Name") + getCriticalLabel(isExtensionCritical(cert, "2.5.29.17")))
@@ -593,7 +563,7 @@ func displayParsedExtensions(cert *x509.Certificate) {
 	if len(cert.OCSPServer) > 0 || len(cert.IssuingCertificateURL) > 0 {
 		arrow := "→"
 		link := "🔗"
-		if isCI() {
+		if env.IsCI() {
 			arrow = "->"
 			link = "[URL]"
 		}
@@ -616,7 +586,7 @@ func displayParsedExtensions(cert *x509.Certificate) {
 	// CRL Distribution Points
 	if len(cert.CRLDistributionPoints) > 0 {
 		link := "🔗"
-		if isCI() {
+		if env.IsCI() {
 			link = "[URL]"
 		}
 		fmt.Println(keyStyle.Render("CRL Distribution Points"))
@@ -629,7 +599,7 @@ func displayParsedExtensions(cert *x509.Certificate) {
 	// Certificate Policies
 	if len(cert.PolicyIdentifiers) > 0 {
 		arrow := "→"
-		if isCI() {
+		if env.IsCI() {
 			arrow = "->"
 		}
 		fmt.Println(keyStyle.Render("Certificate Policies"))
@@ -643,10 +613,10 @@ func displayParsedExtensions(cert *x509.Certificate) {
 
 // displayKeyUsage shows the key usage flags
 func displayKeyUsage(usage x509.KeyUsage) {
-	checkmark := "✓"
-	if isCI() {
-		checkmark = "[OK]"
-	}
+    checkmark := "✓"
+    if env.IsCI() {
+        checkmark = "[OK]"
+    }
 	usages := []struct {
 		flag x509.KeyUsage
 		name string
@@ -688,12 +658,12 @@ func displayExtendedKeyUsage(cert *x509.Certificate) {
 		x509.ExtKeyUsageMicrosoftKernelCodeSigning:     "Microsoft Kernel Code Signing",
 	}
 
-	checkmark := "✓"
-	arrow := "→"
-	if isCI() {
-		checkmark = "[OK]"
-		arrow = "->"
-	}
+    checkmark := "✓"
+    arrow := "→"
+    if env.IsCI() {
+        checkmark = "[OK]"
+        arrow = "->"
+    }
 	for _, usage := range cert.ExtKeyUsage {
 		if name, ok := usageNames[usage]; ok {
 			fmt.Printf("  %s %s\n", successStyle.Render(checkmark), name)
@@ -750,10 +720,10 @@ func displayUnparsedExtensions(cert *x509.Certificate) {
 			if n, ok := oidNames[name]; ok {
 				name = n
 			}
-			arrow := "→"
-			if isCI() {
-				arrow = "->"
-			}
+        arrow := "→"
+        if env.IsCI() {
+            arrow = "->"
+        }
 			critical := ""
 			if ext.Critical {
 				critical = errorStyle.Render(" [CRITICAL]")

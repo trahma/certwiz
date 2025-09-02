@@ -31,8 +31,8 @@ func TestJSONOutput(t *testing.T) {
 		r, w, _ := os.Pipe()
 		os.Stdout = w
 
-		// Run the command
-		generateCmd.Run(generateCmd, []string{})
+        // Run the command
+        _ = generateCmd.RunE(generateCmd, []string{})
 
 		// Restore stdout and read output
 		w.Close()
@@ -69,7 +69,7 @@ func TestJSONOutput(t *testing.T) {
 		generateDays = 365
 		jsonOutput = false
 
-		generateCmd.Run(generateCmd, []string{})
+			_ = generateCmd.RunE(generateCmd, []string{})
 
 		// Now inspect it with JSON output
 		certPath := filepath.Join(tmpDir, "inspect-test.local.crt")
@@ -80,8 +80,8 @@ func TestJSONOutput(t *testing.T) {
 		r, w, _ := os.Pipe()
 		os.Stdout = w
 
-		// Run inspect command
-		inspectCmd.Run(inspectCmd, []string{certPath})
+        // Run inspect command
+        _ = inspectCmd.RunE(inspectCmd, []string{certPath})
 
 		// Restore stdout and read output
 		w.Close()
@@ -134,8 +134,8 @@ func TestJSONOutput(t *testing.T) {
 		r, w, _ := os.Pipe()
 		os.Stdout = w
 
-		// Run verify command
-		verifyCmd.Run(verifyCmd, []string{certPath})
+        // Run verify command
+        _ = verifyCmd.RunE(verifyCmd, []string{certPath})
 
 		// Restore stdout and read output
 		w.Close()
