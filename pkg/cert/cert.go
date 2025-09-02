@@ -16,8 +16,10 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
-	"time"
+    "time"
 )
+
+const defaultDialTimeout = 5 * time.Second
 
 const (
 	// Format constants
@@ -69,11 +71,17 @@ func InspectURLWithChain(targetURL string, port int) (*Certificate, []*Certifica
 // InspectURLWithConnect connects to a specific host but validates the certificate for the target URL
 // This is useful for testing certificates through proxies, tunnels, or local services
 // If connectHost is empty, it connects directly to the target
+// InspectURLWithConnect uses a default timeout for the TLS connection.
 func InspectURLWithConnect(targetURL string, port int, connectHost string) (*Certificate, []*Certificate, error) {
-	// Parse and normalize URL
-	if !strings.Contains(targetURL, "://") {
-		targetURL = "https://" + targetURL
-	}
+    return InspectURLWithConnectTimeout(targetURL, port, connectHost, defaultDialTimeout)
+}
+
+// InspectURLWithConnectTimeout connects with a specific timeout.
+func InspectURLWithConnectTimeout(targetURL string, port int, connectHost string, timeout time.Duration) (*Certificate, []*Certificate, error) {
+    // Parse and normalize URL
+    if !strings.Contains(targetURL, "://") {
+        targetURL = "https://" + targetURL
+    }
 
 	u, err := url.Parse(targetURL)
 	if err != nil {
@@ -97,11 +105,12 @@ func InspectURLWithConnect(targetURL string, port int, connectHost string) (*Cer
 		}
 	}
 
-	// Connect with TLS
-	conn, err := tls.Dial("tcp", dialHost, &tls.Config{
-		InsecureSkipVerify: true, // We want to inspect even invalid certs
-		ServerName:         serverName, // Use the target hostname for SNI
-	})
+    // Connect with TLS using a timeout to avoid hanging
+    dialer := &net.Dialer{Timeout: timeout}
+    conn, err := tls.DialWithDialer(dialer, "tcp", dialHost, &tls.Config{
+        InsecureSkipVerify: true, // We want to inspect even invalid certs
+        ServerName:         serverName, // Use the target hostname for SNI
+    })
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to connect: %w", err)
 	}
@@ -159,23 +168,12 @@ func Generate(opts GenerateOptions) error {
 		BasicConstraintsValid: true,
 	}
 
-	// Add Subject Alternative Names
-	if len(opts.SANs) > 0 {
-		for _, san := range opts.SANs {
-			if strings.Contains(san, ":") {
-				parts := strings.SplitN(san, ":", 2)
-				if strings.ToLower(parts[0]) == "ip" {
-					if ip := net.ParseIP(parts[1]); ip != nil {
-						template.IPAddresses = append(template.IPAddresses, ip)
-					}
-				} else {
-					template.DNSNames = append(template.DNSNames, san)
-				}
-			} else {
-				template.DNSNames = append(template.DNSNames, san)
-			}
-		}
-	}
+    // Add Subject Alternative Names (DNS, IP)
+    if len(opts.SANs) > 0 {
+        dns, ips, _, _ := splitSANs(opts.SANs)
+        template.DNSNames = append(template.DNSNames, dns...)
+        template.IPAddresses = append(template.IPAddresses, ips...)
+    }
 
 	// Create certificate
 	certDER, err := x509.CreateCertificate(rand.Reader, &template, &template, &privateKey.PublicKey, privateKey)
@@ -223,6 +221,13 @@ func Generate(opts GenerateOptions) error {
 		return fmt.Errorf("failed to write private key: %w", err)
 	}
 
+	// Set restrictive permissions on the private key (Unix-like systems only)
+	if runtime.GOOS != "windows" {
+		if err := os.Chmod(keyPath, 0600); err != nil {
+			return fmt.Errorf("failed to set key permissions: %w", err)
+		}
+	}
+
 	return nil
 }
 
@@ -261,10 +266,10 @@ func Convert(inputPath, outputPath, format string) error {
 
 // Verify checks certificate validity and hostname matching
 func Verify(certPath, caPath, hostname string) (*VerificationResult, error) {
-	cert, err := InspectFile(certPath)
-	if err != nil {
-		return nil, err
-	}
+    cert, err := InspectFile(certPath)
+    if err != nil {
+        return nil, err
+    }
 
 	result := &VerificationResult{
 		Certificate: cert,
@@ -283,17 +288,44 @@ func Verify(certPath, caPath, hostname string) (*VerificationResult, error) {
 		result.Errors = append(result.Errors, "Certificate has expired")
 	}
 
-	// Check hostname if provided
-	if hostname != "" {
-		if err := cert.VerifyHostname(hostname); err != nil {
-			result.IsValid = false
-			result.Errors = append(result.Errors, fmt.Sprintf("Hostname verification failed: %v", err))
-		}
-	}
+    // Check hostname if provided
+    if hostname != "" {
+        if err := cert.VerifyHostname(hostname); err != nil {
+            result.IsValid = false
+            result.Errors = append(result.Errors, fmt.Sprintf("Hostname verification failed: %v", err))
+        }
+    }
 
-	// TODO: Implement CA verification if caPath is provided
+    // CA chain verification when a CA bundle/path is provided
+    if caPath != "" {
+        caData, err := os.ReadFile(caPath)
+        if err != nil {
+            return nil, fmt.Errorf("failed to read CA file: %w", err)
+        }
 
-	return result, nil
+        roots := x509.NewCertPool()
+        // Try PEM first
+        if ok := roots.AppendCertsFromPEM(caData); !ok {
+            // Fallback: try single DER certificate
+            if caCert, err := x509.ParseCertificate(caData); err == nil {
+                roots.AddCert(caCert)
+            } else {
+                return nil, fmt.Errorf("failed to parse CA certificate(s)")
+            }
+        }
+
+        opts := x509.VerifyOptions{Roots: roots}
+        if hostname != "" {
+            opts.DNSName = hostname
+        }
+
+        if _, err := cert.Certificate.Verify(opts); err != nil {
+            result.IsValid = false
+            result.Errors = append(result.Errors, fmt.Sprintf("Chain verification failed: %v", err))
+        }
+    }
+
+    return result, nil
 }
 
 // parseCertificate tries to parse certificate data as PEM or DER
@@ -376,18 +408,16 @@ func GenerateCSR(options CSROptions, csrPath, keyPath string) error {
 		template.EmailAddresses = []string{options.EmailAddress}
 	}
 
-	// Process SANs
-	for _, san := range options.SANs {
-		if strings.HasPrefix(san, "IP:") {
-			ipStr := strings.TrimPrefix(san, "IP:")
-			ip := net.ParseIP(ipStr)
-			if ip != nil {
-				template.IPAddresses = append(template.IPAddresses, ip)
-			}
-		} else {
-			template.DNSNames = append(template.DNSNames, san)
-		}
-	}
+    // Process SANs (DNS, IP, optional email/URI)
+    dns, ips, emails, uris := splitSANs(options.SANs)
+    template.DNSNames = append(template.DNSNames, dns...)
+    template.IPAddresses = append(template.IPAddresses, ips...)
+    if len(emails) > 0 {
+        template.EmailAddresses = append(template.EmailAddresses, emails...)
+    }
+    if len(uris) > 0 {
+        template.URIs = append(template.URIs, uris...)
+    }
 
 	// Generate CSR
 	csrBytes, err := x509.CreateCertificateRequest(rand.Reader, &template, privateKey)
@@ -656,20 +686,14 @@ func SignCSR(options SignOptions, certPath string) error {
 	}
 
 	// Handle SANs - use provided SANs or fall back to CSR SANs
-	if len(options.SANs) > 0 {
-		// Override with provided SANs
-		for _, san := range options.SANs {
-			if strings.HasPrefix(san, "IP:") {
-				ipStr := strings.TrimPrefix(san, "IP:")
-				ip := net.ParseIP(ipStr)
-				if ip != nil {
-					template.IPAddresses = append(template.IPAddresses, ip)
-				}
-			} else {
-				template.DNSNames = append(template.DNSNames, san)
-			}
-		}
-	} else {
+    if len(options.SANs) > 0 {
+        // Override with provided SANs
+        dns, ips, emails, uris := splitSANs(options.SANs)
+        template.DNSNames = append(template.DNSNames, dns...)
+        template.IPAddresses = append(template.IPAddresses, ips...)
+        if len(emails) > 0 { template.EmailAddresses = append(template.EmailAddresses, emails...) }
+        if len(uris) > 0 { template.URIs = append(template.URIs, uris...) }
+    } else {
 		// Use SANs from CSR
 		template.DNSNames = csr.DNSNames
 		template.IPAddresses = csr.IPAddresses

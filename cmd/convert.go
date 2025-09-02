@@ -1,8 +1,9 @@
 package cmd
 
 import (
-	"os"
-	"strings"
+    "fmt"
+    "os"
+    "strings"
 
 	"certwiz/pkg/cert"
 	"certwiz/pkg/ui"
@@ -15,27 +16,27 @@ var (
 )
 
 var convertCmd = &cobra.Command{
-	Use:   "convert [input] [output]",
-	Short: "Convert certificate between formats",
+    Use:   "convert [input] [output]",
+    Short: "Convert certificate between formats",
 	Long: `Convert a certificate file between PEM and DER formats.
 
 The input format is automatically detected. The output format is specified
 using the --format flag.
 
 Examples:
-  certwiz convert cert.pem cert.der --format der
-  certwiz convert cert.der cert.pem --format pem
-  certwiz convert server.crt server.der --format der`,
+  cert convert cert.pem cert.der --format der
+  cert convert cert.der cert.pem --format pem
+  cert convert server.crt server.der --format der`,
 	Args: cobra.ExactArgs(2),
-	Run: func(cmd *cobra.Command, args []string) {
-		inputPath := args[0]
-		outputPath := args[1]
+    RunE: func(cmd *cobra.Command, args []string) error {
+        inputPath := args[0]
+        outputPath := args[1]
 
 		// Check if input file exists
-		if _, err := os.Stat(inputPath); os.IsNotExist(err) {
-			ui.ShowError("Input file does not exist: " + inputPath)
-			os.Exit(1)
-		}
+        if _, err := os.Stat(inputPath); os.IsNotExist(err) {
+            ui.ShowError("Input file does not exist: " + inputPath)
+            return fmt.Errorf("input file does not exist: %s", inputPath)
+        }
 
 		// Detect input format for display purposes
 		var inputFormat string
@@ -51,14 +52,14 @@ Examples:
 
 		ui.ShowInfo("Converting certificate format...")
 
-		err := cert.Convert(inputPath, outputPath, convertFormat)
-		if err != nil {
-			ui.ShowError(err.Error())
-			os.Exit(1)
-		}
+        if err := cert.Convert(inputPath, outputPath, convertFormat); err != nil {
+            ui.ShowError(err.Error())
+            return err
+        }
 
-		ui.DisplayConversionResult(inputPath, outputPath, inputFormat, convertFormat)
-	},
+        ui.DisplayConversionResult(inputPath, outputPath, inputFormat, convertFormat)
+        return nil
+    },
 }
 
 func init() {

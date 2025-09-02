@@ -89,7 +89,7 @@ We actively welcome pull requests! Here's how:
 6. Build and test locally:
    ```bash
    make build
-   ./certwiz inspect google.com
+   ./cert inspect google.com
    ```
 
 #### Commit Guidelines

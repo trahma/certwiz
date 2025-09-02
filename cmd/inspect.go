@@ -1,28 +1,28 @@
 package cmd
 
 import (
-	"encoding/json"
-	"fmt"
-	"os"
-	"strconv"
-	"strings"
+    "os"
+    "strconv"
+    "strings"
+    "time"
 
-	"certwiz/pkg/cert"
-	"certwiz/pkg/ui"
+    "certwiz/pkg/cert"
+    "certwiz/pkg/ui"
 
-	"github.com/spf13/cobra"
+    "github.com/spf13/cobra"
 )
 
 var (
-	inspectFull    bool
-	inspectPort    int
-	inspectChain   bool
-	inspectConnect string
+    inspectFull    bool
+    inspectPort    int
+    inspectChain   bool
+    inspectConnect string
+    inspectTimeout string
 )
 
 var inspectCmd = &cobra.Command{
-	Use:   "inspect [file|url]",
-	Short: "Inspect a certificate from a file or URL",
+    Use:   "inspect [file|url]",
+    Short: "Inspect a certificate from a file or URL",
 	Long: `Inspect a certificate from a file or URL and display its information.
 
 If the argument is a valid file path, it will read and parse the certificate file.
@@ -38,39 +38,28 @@ Examples:
   cert inspect google.com --connect localhost:8080
   cert inspect api.example.com --connect tunnel.local --port 443`,
 	Args: cobra.ExactArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
-		target := args[0]
+    RunE: func(cmd *cobra.Command, args []string) error {
+        target := args[0]
 
 		// Determine if target is a file or URL
 		if _, err := os.Stat(target); err == nil {
 			// It's a file
-			certificate, err := cert.InspectFile(target)
-			if err != nil {
-				if jsonOutput {
-					result := cert.JSONOperationResult{
-						Success: false,
-						Error:   err.Error(),
-					}
-					jsonData, _ := json.MarshalIndent(result, "", "  ")
-					fmt.Println(string(jsonData))
-				} else {
-					ui.ShowError(err.Error())
-				}
-				os.Exit(1)
-			}
+            certificate, err := cert.InspectFile(target)
+            if err != nil {
+                if jsonOutput {
+                    printJSONError(err)
+                } else {
+                    ui.ShowError(err.Error())
+                }
+                return err
+            }
 
-			if jsonOutput {
-				jsonCert := certificate.ToJSON()
-				jsonData, err := json.MarshalIndent(jsonCert, "", "  ")
-				if err != nil {
-					ui.ShowError(fmt.Sprintf("Failed to marshal JSON: %v", err))
-					os.Exit(1)
-				}
-				fmt.Println(string(jsonData))
-			} else {
-				ui.DisplayCertificate(certificate, inspectFull)
-			}
-		} else {
+            if jsonOutput {
+                printJSON(certificate.ToJSON())
+            } else {
+                ui.DisplayCertificate(certificate, inspectFull)
+            }
+        } else {
 			// It's a URL/hostname
 			port := inspectPort
 			connectHost := ""
@@ -101,24 +90,27 @@ Examples:
 				}
 			}
 
-			// Use the enhanced function that supports connect host
-			certificate, chain, err := cert.InspectURLWithConnect(target, port, connectHost)
-			if err != nil {
-				if jsonOutput {
-					result := cert.JSONOperationResult{
-						Success: false,
-						Error:   err.Error(),
-					}
-					jsonData, _ := json.MarshalIndent(result, "", "  ")
-					fmt.Println(string(jsonData))
-				} else {
-					ui.ShowError(err.Error())
-				}
-				os.Exit(1)
-			}
+			// Determine timeout
+            timeout := 5 * time.Second
+            if inspectTimeout != "" {
+                if d, err := time.ParseDuration(inspectTimeout); err == nil {
+                    timeout = d
+                }
+            }
 
-			if jsonOutput {
-				jsonCert := certificate.ToJSON()
+			// Use the enhanced function that supports connect host and timeout
+            certificate, chain, err := cert.InspectURLWithConnectTimeout(target, port, connectHost, timeout)
+            if err != nil {
+                if jsonOutput {
+                    printJSONError(err)
+                } else {
+                    ui.ShowError(err.Error())
+                }
+                return err
+            }
+
+            if jsonOutput {
+                jsonCert := certificate.ToJSON()
 
 				// Add chain if requested
 				if inspectChain && len(chain) > 0 {
@@ -134,27 +126,24 @@ Examples:
 					}
 				}
 
-				jsonData, err := json.MarshalIndent(jsonCert, "", "  ")
-				if err != nil {
-					ui.ShowError(fmt.Sprintf("Failed to marshal JSON: %v", err))
-					os.Exit(1)
-				}
-				fmt.Println(string(jsonData))
-			} else {
-				ui.DisplayCertificate(certificate, inspectFull)
+                printJSON(jsonCert)
+            } else {
+                ui.DisplayCertificate(certificate, inspectFull)
 
-				// Display chain if requested
-				if inspectChain && len(chain) > 0 {
-					ui.DisplayCertificateChain(chain)
-				}
-			}
-		}
-	},
+                // Display chain if requested
+                if inspectChain && len(chain) > 0 {
+                    ui.DisplayCertificateChain(chain)
+                }
+            }
+        }
+        return nil
+    },
 }
 
 func init() {
-	inspectCmd.Flags().BoolVar(&inspectFull, "full", false, "Show full certificate details including extensions")
-	inspectCmd.Flags().IntVar(&inspectPort, "port", 443, "Port for remote inspection")
-	inspectCmd.Flags().BoolVar(&inspectChain, "chain", false, "Show certificate chain")
-	inspectCmd.Flags().StringVar(&inspectConnect, "connect", "", "Connect to a different host (e.g., localhost:8080) while validating the cert for the target hostname")
+    inspectCmd.Flags().BoolVar(&inspectFull, "full", false, "Show full certificate details including extensions")
+    inspectCmd.Flags().IntVar(&inspectPort, "port", 443, "Port for remote inspection")
+    inspectCmd.Flags().BoolVar(&inspectChain, "chain", false, "Show certificate chain")
+    inspectCmd.Flags().StringVar(&inspectConnect, "connect", "", "Connect to a different host (e.g., localhost:8080) while validating the cert for the target hostname")
+    inspectCmd.Flags().StringVar(&inspectTimeout, "timeout", "5s", "Network timeout for remote inspection (e.g., 5s, 2s)")
 }

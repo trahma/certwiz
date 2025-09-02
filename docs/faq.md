@@ -115,7 +115,7 @@ certwiz intelligently wraps SANs based on terminal width. All SANs are shown, bu
 
 ### Can certwiz generate CA certificates?
 
-Currently, certwiz generates self-signed certificates. CA certificate generation is planned for a future release.
+Yes. Use `cert ca` to create a self-signed Certificate Authority and `cert sign` to sign CSRs with that CA.
 
 ### How do I add multiple domain names to a certificate?
 
@@ -194,6 +194,7 @@ With `--host`:
 With `--ca`:
 - Certificate chain validation
 - Signature verification
+ - Trust path built against provided CA(s)
 
 ### How do I verify against a custom CA?
 
@@ -208,6 +209,14 @@ Yes, but verification will note that it's self-signed. For full validation, prov
 ```bash
 cert verify self-signed.crt --ca self-signed.crt
 ```
+
+### Does `inspect` have a connection timeout?
+
+Yes. Remote inspection uses a 5-second network connection timeout by default to avoid hangs.
+
+### Does certwiz support JSON output?
+
+Yes. Add `--json` to any command for machine-readable output.
 
 ## Troubleshooting
 
