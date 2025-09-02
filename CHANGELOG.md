@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2025-09-02
+
+### Added
+- **Centralized environment helpers** (`internal/environ`)
+  - `IsCI()` for detecting CI environments
+  - `SupportsUnicode()` for terminal capability detection
+- **CA chain verification** in `verify` command
+  - New `--ca` flag accepts PEM or DER format CA certificates
+  - Full chain validation using `x509.VerifyOptions`
+- **Network timeout for `inspect` command**
+  - Default 5-second connection timeout to prevent hangs
+  - New `--timeout` flag for custom timeout values
+- **DRY SAN parsing** via `pkg/cert/san.go`
+  - Supports DNS, IP, email, and URI SANs
+  - Consistent parsing across generate, CSR, and CA commands
+
+### Changed
+- **Secure key permissions**: Generated private keys now have `0600` permissions on Unix
+- **Standardized JSON output** with unified `printJSON` and `printJSONError` helpers
+- **Consistent error handling**: All commands now use `RunE` with proper error returns
+- **Improved code organization**: Reduced duplication across commands
+- **Enhanced documentation**: Updated commands.md, usage.md, and FAQ
+
+### Security
+- Private keys are now created with restrictive permissions (0600) by default
+- Proper CA certificate validation in verify command
+
 ## [0.1.10] - 2025-08-20
 
 ### Fixed
