@@ -26,12 +26,23 @@ certwiz/                    # Project root (name: certwiz)
 │   ├── inspect.go        # cert inspect
 │   ├── generate.go       # cert generate
 │   ├── convert.go        # cert convert
-│   └── verify.go         # cert verify
+│   ├── verify.go         # cert verify
+│   ├── ca.go             # cert ca
+│   ├── csr.go            # cert csr
+│   ├── sign.go           # cert sign
+│   ├── update.go         # cert update
+│   └── helpers.go        # Shared helper functions
 ├── pkg/                   # Core packages
 │   ├── cert/             # Certificate operations
-│   │   └── cert.go
+│   │   ├── cert.go      # Main certificate functions
+│   │   ├── json.go      # JSON output structures
+│   │   └── san.go       # SAN parsing utilities
 │   └── ui/               # Terminal UI with lipgloss
 │       └── ui.go
+├── internal/             # Internal packages
+│   ├── environ/          # Environment detection
+│   │   └── env.go       # CI and Unicode detection
+│   └── testutil/         # Test utilities
 └── docs/                  # Documentation
     ├── installation.md
     ├── usage.md
@@ -64,10 +75,16 @@ cert [command] [target] [flags]
 ```
 
 Commands:
-- `inspect` - View certificate details
+- `inspect` - View certificate details from files or URLs
 - `generate` - Create self-signed certificates
 - `convert` - Convert between PEM/DER formats
 - `verify` - Validate certificates
+- `ca` - Create Certificate Authority certificates
+- `csr` - Generate Certificate Signing Requests
+- `sign` - Sign CSRs with a CA certificate
+- `update` - Update cert to the latest version
+- `version` - Show version information
+- `completion` - Generate shell completion scripts
 
 ## Code Style Guidelines
 
@@ -118,8 +135,17 @@ Commands:
 // From file
 cert, err := cert.InspectFile(filepath)
 
-// From URL
+// From URL with basic options
 cert, chain, err := cert.InspectURLWithChain(url, port)
+
+// With proxy/tunnel support
+cert, chain, err := cert.InspectURLWithConnect(url, port, connectHost)
+
+// With timeout
+cert, chain, err := cert.InspectURLWithConnectTimeout(url, port, connectHost, timeout)
+
+// With signature algorithm preference (ECDSA/RSA)
+cert, chain, err := cert.InspectURLWithOptions(url, port, connectHost, timeout, sigAlg)
 ```
 
 ### UI Display
@@ -326,17 +352,33 @@ go test -coverprofile coverage.out  # Space instead of =
 - Use `--chain` to see trust path
 - Check SANs match hostname
 
+## Completed Features
+
+These features have been successfully implemented:
+- ✅ CA certificate generation (`cert ca` command)
+- ✅ Certificate signing requests (`cert csr` command)
+- ✅ Certificate signing with CA (`cert sign` command)
+- ✅ JSON output format (all commands support `--json` flag)
+- ✅ Network timeout configuration (`--timeout` flag)
+- ✅ Proxy/tunnel support (`--connect` flag)
+- ✅ Signature algorithm selection (`--sig-alg` flag for inspect)
+- ✅ Automatic update command (`cert update`)
+- ✅ Certificate chain verification (`--ca` flag for verify)
+- ✅ Secure key permissions (0600 on Unix systems)
+
 ## Future Enhancements (Roadmap)
 
 These are planned but not yet implemented:
-- ECDSA key generation
-- CA certificate generation
+- ECDSA key generation (for generate command)
 - PKCS#12/PFX support
-- JSON output format
-- Certificate signing requests (CSR)
 - ACME/Let's Encrypt integration
 - Certificate transparency logs
 - Web UI dashboard
+- OCSP stapling verification
+- Certificate pinning validation
+- Automatic certificate renewal
+- Integration with HashiCorp Vault
+- Kubernetes cert-manager integration
 
 ## Release Process
 
