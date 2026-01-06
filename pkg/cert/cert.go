@@ -16,7 +16,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
-    "time"
+	"time"
 )
 
 const defaultDialTimeout = 5 * time.Second
@@ -827,4 +827,103 @@ type SignOptions struct {
 	CAKey   string
 	Days    int
 	SANs    []string // Optional: override CSR SANs
+}
+
+// TLSVersion represents a TLS version constant
+type TLSVersion uint16
+
+const (
+	TLSVersionTLS10 TLSVersion = tls.VersionTLS10
+	TLSVersionTLS11 TLSVersion = tls.VersionTLS11
+	TLSVersionTLS12 TLSVersion = tls.VersionTLS12
+	TLSVersionTLS13 TLSVersion = tls.VersionTLS13
+)
+
+// TLSVersionInfo contains information about a single TLS version test
+type TLSVersionInfo struct {
+	Version TLSVersion
+	Name    string
+	Supported bool
+	Error   string
+}
+
+// TLSResult contains the results of TLS version testing
+type TLSResult struct {
+	Host         string
+	Port         int
+	Versions     []TLSVersionInfo
+	MinSupported TLSVersion
+	MaxSupported TLSVersion
+}
+
+// tlsVersionNames maps TLS versions to their human-readable names
+var tlsVersionNames = map[TLSVersion]string{
+	TLSVersionTLS10: "TLS 1.0",
+	TLSVersionTLS11: "TLS 1.1",
+	TLSVersionTLS12: "TLS 1.2",
+	TLSVersionTLS13: "TLS 1.3",
+}
+
+// CheckTLSVersions tests which TLS versions are supported by a server
+func CheckTLSVersions(host string, port int, timeout time.Duration) (*TLSResult, error) {
+	result := &TLSResult{
+		Host:     host,
+		Port:     port,
+		Versions: make([]TLSVersionInfo, 0, 4),
+	}
+
+	dialHost := fmt.Sprintf("%s:%d", host, port)
+	dialer := &net.Dialer{Timeout: timeout}
+
+	// Test each TLS version
+	versions := []TLSVersion{
+		TLSVersionTLS10,
+		TLSVersionTLS11,
+		TLSVersionTLS12,
+		TLSVersionTLS13,
+	}
+
+	var minSupported, maxSupported TLSVersion
+
+	for _, version := range versions {
+		info := TLSVersionInfo{
+			Version: version,
+			Name:    tlsVersionNames[version],
+			Supported: false,
+		}
+
+		tlsConfig := &tls.Config{
+			InsecureSkipVerify: true,
+			ServerName:         host,
+			MinVersion:         uint16(version),
+			MaxVersion:         uint16(version),
+		}
+
+		conn, err := tls.DialWithDialer(dialer, "tcp", dialHost, tlsConfig)
+		if err != nil {
+			// Check if it's a version-specific error
+			info.Error = err.Error()
+			info.Supported = false
+		} else {
+			info.Supported = true
+			_ = conn.Close()
+		}
+
+		result.Versions = append(result.Versions, info)
+
+		// Track min and max supported versions
+		if info.Supported {
+			if minSupported == 0 || version < minSupported {
+				minSupported = version
+			}
+			if version > maxSupported {
+				maxSupported = version
+			}
+		}
+	}
+
+	result.MinSupported = minSupported
+	result.MaxSupported = maxSupported
+
+	return result, nil
 }

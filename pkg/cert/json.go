@@ -4,6 +4,7 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/json"
+	"fmt"
 	"time"
 )
 
@@ -81,6 +82,23 @@ type JSONOperationResult struct {
 	Error   string   `json:"error,omitempty"`
 }
 
+// JSONTLSVersionInfo represents TLS version test info in JSON format
+type JSONTLSVersionInfo struct {
+	Version   string `json:"version"`
+	Name      string `json:"name"`
+	Supported bool   `json:"supported"`
+	Error     string `json:"error,omitempty"`
+}
+
+// JSONTLSResult represents TLS version test results in JSON format
+type JSONTLSResult struct {
+	Host         string               `json:"host"`
+	Port         int                  `json:"port"`
+	Versions     []JSONTLSVersionInfo `json:"versions"`
+	MinSupported string               `json:"min_supported"`
+	MaxSupported string               `json:"max_supported"`
+}
+
 // ToJSON converts a Certificate to JSONCertificate
 func (c *Certificate) ToJSON() JSONCertificate {
 	jc := JSONCertificate{
@@ -153,6 +171,41 @@ func (vr *VerificationResult) ToJSON() JSONVerificationResult {
 		Warnings:    vr.Warnings,
 		Certificate: vr.Certificate.ToJSON(),
 	}
+}
+
+// ToJSON converts TLSResult to JSONTLSResult
+func (tr *TLSResult) ToJSON() JSONTLSResult {
+	jsonResult := JSONTLSResult{
+		Host:         tr.Host,
+		Port:         tr.Port,
+		Versions:     make([]JSONTLSVersionInfo, 0, len(tr.Versions)),
+		MinSupported: "",
+		MaxSupported: "",
+	}
+
+	for _, v := range tr.Versions {
+		jsonVersion := JSONTLSVersionInfo{
+			Version:   fmt.Sprintf("0x%04x", uint16(v.Version)),
+			Name:      v.Name,
+			Supported: v.Supported,
+			Error:     v.Error,
+		}
+		jsonResult.Versions = append(jsonResult.Versions, jsonVersion)
+	}
+
+	if tr.MinSupported != 0 {
+		jsonResult.MinSupported = tlsVersionNames[tr.MinSupported]
+	}
+	if tr.MaxSupported != 0 {
+		jsonResult.MaxSupported = tlsVersionNames[tr.MaxSupported]
+	}
+
+	return jsonResult
+}
+
+// MarshalJSON implements json.Marshaler for TLSResult
+func (tr *TLSResult) MarshalJSON() ([]byte, error) {
+	return json.Marshal(tr.ToJSON())
 }
 
 // MarshalJSON implements json.Marshaler for Certificate

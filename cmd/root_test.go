@@ -73,6 +73,7 @@ func TestCommandStructure(t *testing.T) {
 		"help", // Auto-added by Cobra
 		"inspect",
 		"sign", // Sign CSRs with CA
+		"tls",   // TLS version testing
 		"update",
 		"verify",
 		"version",

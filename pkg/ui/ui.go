@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
+	env "certwiz/internal/environ"
 	"certwiz/pkg/cert"
-    env "certwiz/internal/environ"
 
 	"github.com/charmbracelet/lipgloss"
 	"golang.org/x/term"
@@ -799,4 +799,95 @@ func DisplayCSRInfo(info *cert.CSRInfo) {
 		Width(width - 4)
 
 	fmt.Println(panel.Render(content))
+}
+
+// DisplayTLSVersionResults shows TLS version test results
+func DisplayTLSVersionResults(result *cert.TLSResult) {
+	title := fmt.Sprintf("TLS Version Support for %s:%d", result.Host, result.Port)
+	fmt.Println(titleStyle.Render(title))
+	fmt.Println()
+
+	// Determine symbols based on environment
+	checkmark := "✓"
+	crossMark := "✗"
+	if env.IsCI() {
+		checkmark = "[OK]"
+		crossMark = "[X]"
+	}
+
+	// Create a table for version results
+	table := [][]string{}
+	for _, v := range result.Versions {
+		status := fmt.Sprintf("%s %s", errorStyle.Render(crossMark), errorStyle.Render("Not Supported"))
+		if v.Supported {
+			status = fmt.Sprintf("%s %s", successStyle.Render(checkmark), successStyle.Render("Supported"))
+		}
+		table = append(table, []string{v.Name, status})
+	}
+
+	// Display the table
+	content := formatTable(table)
+
+	// Get terminal width
+	width, _, err := term.GetSize(0)
+	if err != nil || width <= 0 {
+		width = 80
+	}
+
+	panel := getPanelStyle().
+		BorderForeground(cyan).
+		Width(width - 4)
+	fmt.Println(panel.Render(content))
+
+	// Show summary
+	fmt.Println()
+	fmt.Println(headerStyle.Render("Summary"))
+	fmt.Println()
+
+	if result.MinSupported != 0 {
+		minName := tlsVersionNames(result.MinSupported)
+		fmt.Printf("  %s Minimum supported version: %s\n", keyStyle.Render("→"), successStyle.Render(minName))
+	}
+	if result.MaxSupported != 0 {
+		maxName := tlsVersionNames(result.MaxSupported)
+		fmt.Printf("  %s Maximum supported version: %s\n", keyStyle.Render("→"), successStyle.Render(maxName))
+	}
+
+	// Security recommendations
+	fmt.Println()
+	recommendations := []string{}
+	for _, v := range result.Versions {
+		if v.Supported && (v.Version == cert.TLSVersionTLS10 || v.Version == cert.TLSVersionTLS11) {
+			recommendations = append(recommendations, fmt.Sprintf(" %s is enabled but deprecated", v.Name))
+		}
+	}
+
+	if len(recommendations) > 0 {
+		warnSymbol := "⚠"
+		if env.IsCI() {
+			warnSymbol = "[!]"
+		}
+		fmt.Println(warningStyle.Render(fmt.Sprintf("%s Security Warning:", warnSymbol)))
+		for _, rec := range recommendations {
+			fmt.Printf("  %s%s\n", warningStyle.Render("→"), rec)
+		}
+		fmt.Println()
+		fmt.Println(keyStyle.Render("Recommendation: Consider disabling TLS 1.0 and TLS 1.1 for improved security."))
+	}
+}
+
+// tlsVersionNames is a helper to get version names
+func tlsVersionNames(v cert.TLSVersion) string {
+	switch v {
+	case cert.TLSVersionTLS10:
+		return "TLS 1.0"
+	case cert.TLSVersionTLS11:
+		return "TLS 1.1"
+	case cert.TLSVersionTLS12:
+		return "TLS 1.2"
+	case cert.TLSVersionTLS13:
+		return "TLS 1.3"
+	default:
+		return "Unknown"
+	}
 }
