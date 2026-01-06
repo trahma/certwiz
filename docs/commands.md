@@ -282,6 +282,106 @@ The verify command performs:
 - `0` - Success
 - Non-zero - Error (verification or runtime issues)
 
+## tls
+
+Test supported TLS versions for a hostname.
+
+### Synopsis
+
+```bash
+cert tls <hostname> [flags]
+```
+
+### Options
+
+| Flag | Short | Description | Default |
+|------|-------|-------------|---------|
+| `--port` | `-p` | Port for TLS testing | `443` |
+| `--timeout` | | Network timeout (e.g., `5s`) | `5s` |
+
+### Arguments
+
+- `hostname` - Target hostname to test (required)
+
+### Examples
+
+```bash
+# Test TLS versions for a domain
+cert tls google.com
+cert tls example.com
+
+# Test with custom port
+cert tls api.example.com:8443
+cert tls internal.service --port 443
+
+# Test with custom timeout
+cert tls slow-server.example.com --timeout 10s
+```
+
+### Output Details
+
+The tls command shows:
+- **TLS Version Support**: Which TLS versions (1.0, 1.1, 1.2, 1.3) are supported
+- **Status**: Checkmarks for supported versions, cross marks for unsupported
+- **Summary**: Minimum and maximum supported versions
+- **Security Warnings**: Recommendations if deprecated TLS versions are enabled
+
+### Security Analysis
+
+The command automatically detects and warns about:
+- **Deprecated TLS versions**: TLS 1.0 and TLS 1.1 are considered insecure
+- **Modern TLS support**: TLS 1.2 and TLS 1.3 are recommended
+
+Example output:
+
+```
+ TLS Version Support for google.com:443 
+
+╭────────────────────────────────────────────────────────────────────────────╮
+│                                                                            │
+│  TLS 1.0: ✓ Supported                                                      │
+│  TLS 1.1: ✓ Supported                                                      │
+│  TLS 1.2: ✓ Supported                                                      │
+│  TLS 1.3: ✓ Supported                                                      │
+│                                                                            │
+╰────────────────────────────────────────────────────────────────────────────╯
+
+Summary
+
+  → Minimum supported version: TLS 1.0
+  → Maximum supported version: TLS 1.3
+
+⚠ Security Warning:
+  → TLS 1.0 is enabled but deprecated
+  → TLS 1.1 is enabled but deprecated
+
+Recommendation: Consider disabling TLS 1.0 and TLS 1.1 for improved security.
+```
+
+### JSON Output
+
+```bash
+# Get structured TLS version data
+cert tls google.com --json | jq .
+
+# Check if TLS 1.2+ is supported
+cert tls example.com --json | jq '.max_supported | contains("TLS 1.2")'
+```
+
+### Use Cases
+
+- **Security auditing**: Verify servers don't support deprecated TLS versions
+- **Compliance checking**: Ensure servers meet TLS requirements
+- **Migration testing**: Verify servers after TLS configuration changes
+- **Troubleshooting**: Diagnose TLS compatibility issues
+
+### Notes
+
+- The command tests each TLS version individually by setting MinVersion and MaxVersion
+- Connection errors for a version indicate it's not supported
+- The timeout applies to each individual version test
+- Results may vary based on server configuration and SNI requirements
+
 ## update
 
 Update cert to the latest version.

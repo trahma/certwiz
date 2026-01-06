@@ -4,11 +4,12 @@ This guide covers the basic usage of certwiz commands with practical examples.
 
 ## Basic Commands
 
-certwiz has four main commands:
+certwiz has five main commands:
 - `inspect` - View certificate information
 - `generate` - Create certificates
 - `convert` - Convert between formats
 - `verify` - Validate certificates
+- `tls` - Test TLS version support
 
 ## Inspecting Certificates
 
@@ -387,6 +388,66 @@ cert verify mysite.com.crt --host mysite.com
 
 # 4. Convert if needed
 cert convert mysite.com.crt mysite.com.der --format der
+```
+
+## Testing TLS Versions
+
+### Check Supported TLS Versions
+
+Test which TLS versions a server supports:
+
+```bash
+cert tls google.com
+cert tls example.com
+```
+
+This shows:
+- ✓ Supported versions (TLS 1.0, 1.1, 1.2, 1.3)
+- ✗ Unsupported versions
+- Minimum and maximum supported versions
+- Security warnings for deprecated versions
+
+### Custom Port and Timeout
+
+```bash
+# Test non-standard port
+cert tls api.example.com:8443
+
+# With custom timeout
+cert tls slow-server.example.com --timeout 10s
+```
+
+### Security Analysis
+
+The tls command identifies security issues:
+
+```bash
+# Check for deprecated TLS versions
+cert tls myserver.com
+```
+
+If TLS 1.0 or 1.1 is enabled, you'll see:
+- ⚠ Security Warning
+- Recommendation to disable deprecated versions
+
+### Use Cases
+
+- **Security audits**: Verify servers don't support TLS 1.0/1.1
+- **Compliance checks**: Ensure TLS 1.2+ support
+- **Migration testing**: Verify configuration changes
+- **Troubleshooting**: Diagnose TLS compatibility issues
+
+### JSON Output for Scripts
+
+```bash
+# Get structured data
+cert tls example.com --json | jq .
+
+# Check TLS 1.2+ support
+cert tls example.com --json | jq '.max_supported | contains("TLS 1.2")'
+
+# Fail if deprecated versions are enabled
+cert tls example.com --json | jq '.versions[] | select(.name | startswith("TLS 1.0") or startswith("TLS 1.1")) | .supported' | grep -q true && echo "FAIL: Deprecated TLS enabled"
 ```
 
 ## Next Steps
