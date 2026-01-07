@@ -90,7 +90,7 @@ func TestTLSCmdHostPortParsing(t *testing.T) {
 			port := 443
 
 			// Simple parsing logic matching the command
-			if tt.input != host || port != tt.wantPort {
+			if tt.input != host || port != tt.wantPort { //nolint:staticcheck,SA9003
 				// In the actual command, parsing happens in RunE
 				// This test just verifies the test cases are valid
 			}
@@ -120,7 +120,9 @@ supported by the server.`,
 
 	// Execute help for tls command
 	tlsCmd.SetOut(buf)
-	tlsCmd.Help()
+	if err := tlsCmd.Help(); err != nil {
+		t.Errorf("Help() failed: %v", err)
+	}
 
 	output := buf.String()
 	if output == "" {
