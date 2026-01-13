@@ -235,13 +235,21 @@ func TestXDGConfigPath(t *testing.T) {
 		t.Fatalf("Failed to write test config: %v", err)
 	}
 
+	// Save and clear both HOME and XDG_CONFIG_HOME to ensure our test controls the paths
 	origHome := os.Getenv("HOME")
+	origXDG := os.Getenv("XDG_CONFIG_HOME")
 	defer func() {
 		os.Setenv("HOME", origHome)
+		if origXDG != "" {
+			os.Setenv("XDG_CONFIG_HOME", origXDG)
+		} else {
+			os.Unsetenv("XDG_CONFIG_HOME")
+		}
 		Reset()
 	}()
 
 	os.Setenv("HOME", tmpDir)
+	os.Unsetenv("XDG_CONFIG_HOME") // Clear so it falls back to HOME/.config
 	Reset()
 
 	cfg := Load()
