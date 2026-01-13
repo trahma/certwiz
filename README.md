@@ -166,6 +166,40 @@ cert verify cert.pem --json | jq '.is_valid'
 cert inspect cert.pem --json | jq '.days_until_expiry'
 ```
 
+## ⚙️ Configuration
+
+### Plain Output Mode
+
+Use `--plain` flag to disable borders, colors, and emojis for easy copy/paste:
+
+```bash
+cert inspect google.com --plain
+cert tls github.com --plain
+```
+
+### Config File
+
+Create a config file to set default preferences:
+
+**Locations** (checked in order):
+1. `~/.config/certwiz/config.yaml`
+2. `~/.certwiz.yaml`
+
+**Example config:**
+```yaml
+output:
+  plain: false      # Master switch for plain mode
+  borders: true     # Show bordered panels
+  colors: true      # Use colored output
+  emojis: true      # Show emojis (✓, ✗, etc.)
+```
+
+**Priority order:**
+1. `--plain` flag (overrides everything)
+2. Config file settings
+3. CI environment detection (auto-disables emojis)
+4. Built-in defaults
+
 ## 🔥 Key Features in Detail
 
 ### Certificate Inspection

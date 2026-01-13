@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.3] - 2026-01-13
+
+### Added
+- **Plain output mode** with `--plain` flag
+  - Disables borders, colors, and emojis for easy copy/paste
+  - Works with all commands
+- **Config file support**
+  - Locations: `~/.config/certwiz/config.yaml` or `~/.certwiz.yaml`
+  - Configure default output preferences (borders, colors, emojis)
+  - Priority: `--plain` flag > config file > CI detection > defaults
+
+### Documentation
+- Added configuration section to README
+- Documented config file format and locations
+
+## [0.2.2] - 2026-01-13
+
+### Added
+- **New `cert tls` command** for TLS version testing
+  - Tests which TLS versions a server supports (1.0, 1.1, 1.2, 1.3)
+  - Shows supported versions with color-coded status
+  - Includes `--json` output for automation
+  - Supports `--timeout` flag for connection timeout
+
 ## [0.2.1] - 2025-09-02
 
 ### Added
@@ -203,6 +227,10 @@ All features from v0.1.6 are included in this release.
 - Binary named `cert` for ease of use
 - Project name remains `certwiz`
 
+[0.2.3]: https://github.com/trahma/certwiz/releases/tag/v0.2.3
+[0.2.2]: https://github.com/trahma/certwiz/releases/tag/v0.2.2
+[0.2.1]: https://github.com/trahma/certwiz/releases/tag/v0.2.1
+[0.2.0]: https://github.com/trahma/certwiz/releases/tag/v0.2.0
 [0.1.10]: https://github.com/trahma/certwiz/releases/tag/v0.1.10
 [0.1.9]: https://github.com/trahma/certwiz/releases/tag/v0.1.9
 [0.1.8]: https://github.com/trahma/certwiz/releases/tag/v0.1.8
