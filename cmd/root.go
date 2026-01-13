@@ -3,15 +3,22 @@ package cmd
 import (
 	"fmt"
 
+	"certwiz/internal/config"
+	"certwiz/pkg/ui"
+
 	"github.com/spf13/cobra"
 )
 
-var version = "0.2.2"
+var version = "0.2.3"
 
 var (
 	versionFlag bool
 	jsonOutput  bool
+	plainOutput bool
 )
+
+// AppConfig holds the loaded configuration
+var AppConfig *config.Config
 
 var rootCmd = &cobra.Command{
     Use:   "cert",
@@ -38,22 +45,33 @@ func Execute() error {
 }
 
 func init() {
-    // Prefer Cobra-managed help/errors
-    rootCmd.SilenceUsage = true
-    rootCmd.SilenceErrors = false
+	// Prefer Cobra-managed help/errors
+	rootCmd.SilenceUsage = true
+	rootCmd.SilenceErrors = false
 
-    // Add global flags
-    rootCmd.PersistentFlags().BoolVar(&jsonOutput, "json", false, "Output in JSON format")
+	// Add global flags
+	rootCmd.PersistentFlags().BoolVar(&jsonOutput, "json", false, "Output in JSON format")
+	rootCmd.PersistentFlags().BoolVar(&plainOutput, "plain", false, "Output in plain format (no borders, colors, or emojis)")
 
 	// Add version flag
 	rootCmd.Flags().BoolVarP(&versionFlag, "version", "v", false, "Print version information")
 
+	// Load config and apply flag overrides before any command runs
+	rootCmd.PersistentPreRun = func(cmd *cobra.Command, args []string) {
+		AppConfig = config.Load()
+		if plainOutput {
+			AppConfig.ApplyPlainMode()
+		}
+		// Pass config to UI package
+		ui.SetConfig(AppConfig)
+	}
+
 	// Add subcommands
-    rootCmd.AddCommand(inspectCmd)
-    rootCmd.AddCommand(generateCmd)
-    rootCmd.AddCommand(convertCmd)
-    rootCmd.AddCommand(verifyCmd)
-    rootCmd.AddCommand(versionCmd)
+	rootCmd.AddCommand(inspectCmd)
+	rootCmd.AddCommand(generateCmd)
+	rootCmd.AddCommand(convertCmd)
+	rootCmd.AddCommand(verifyCmd)
+	rootCmd.AddCommand(versionCmd)
 }
 
 var versionCmd = &cobra.Command{

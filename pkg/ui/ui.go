@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"certwiz/internal/config"
 	env "certwiz/internal/environ"
 	"certwiz/pkg/cert"
 
@@ -24,52 +25,118 @@ var (
 	cyan   = lipgloss.Color("#00ffff")
 	blue   = lipgloss.Color("#0066cc")
 	white  = lipgloss.Color("#ffffff")
-
-	// Styles
-	titleStyle = lipgloss.NewStyle().
-			Foreground(cyan).
-			Bold(true).
-			Padding(0, 1)
-
-	headerStyle = lipgloss.NewStyle().
-			Foreground(blue).
-			Bold(true)
-
-	successStyle = lipgloss.NewStyle().
-			Foreground(green).
-			Bold(true)
-
-	errorStyle = lipgloss.NewStyle().
-			Foreground(red).
-			Bold(true)
-
-	warningStyle = lipgloss.NewStyle().
-			Foreground(yellow).
-			Bold(true)
-
-	keyStyle = lipgloss.NewStyle().
-			Foreground(cyan).
-			Bold(false)
-
-	valueStyle = lipgloss.NewStyle().
-			Foreground(white)
 )
 
-// getPanelStyle returns the appropriate panel style based on environment
+// uiConfig holds the current UI configuration
+var uiConfig *config.Config
+
+// SetConfig sets the UI configuration
+func SetConfig(cfg *config.Config) {
+	uiConfig = cfg
+}
+
+// getConfig returns the current config, loading default if not set
+func getConfig() *config.Config {
+	if uiConfig == nil {
+		uiConfig = config.DefaultConfig()
+	}
+	return uiConfig
+}
+
+// Style getters that respect config
+func getTitleStyle() lipgloss.Style {
+	style := lipgloss.NewStyle().Bold(true).Padding(0, 1)
+	if getConfig().ShouldShowColors() {
+		style = style.Foreground(cyan)
+	}
+	return style
+}
+
+func getHeaderStyle() lipgloss.Style {
+	style := lipgloss.NewStyle().Bold(true)
+	if getConfig().ShouldShowColors() {
+		style = style.Foreground(blue)
+	}
+	return style
+}
+
+func getSuccessStyle() lipgloss.Style {
+	style := lipgloss.NewStyle().Bold(true)
+	if getConfig().ShouldShowColors() {
+		style = style.Foreground(green)
+	}
+	return style
+}
+
+func getErrorStyle() lipgloss.Style {
+	style := lipgloss.NewStyle().Bold(true)
+	if getConfig().ShouldShowColors() {
+		style = style.Foreground(red)
+	}
+	return style
+}
+
+func getWarningStyle() lipgloss.Style {
+	style := lipgloss.NewStyle().Bold(true)
+	if getConfig().ShouldShowColors() {
+		style = style.Foreground(yellow)
+	}
+	return style
+}
+
+func getKeyStyle() lipgloss.Style {
+	style := lipgloss.NewStyle()
+	if getConfig().ShouldShowColors() {
+		style = style.Foreground(cyan)
+	}
+	return style
+}
+
+func getValueStyle() lipgloss.Style {
+	style := lipgloss.NewStyle()
+	if getConfig().ShouldShowColors() {
+		style = style.Foreground(white)
+	}
+	return style
+}
+
+// getEmoji returns emoji or ASCII based on config and environment
+func getEmoji(emoji, ascii string) string {
+	if !getConfig().ShouldShowEmojis() || env.IsCI() {
+		return ascii
+	}
+	return emoji
+}
+
+// getPanelStyle returns the appropriate panel style based on environment and config
 func getPanelStyle() lipgloss.Style {
+	cfg := getConfig()
+
+	// If borders are disabled, return a simple style with just padding
+	if !cfg.ShouldShowBorders() {
+		return lipgloss.NewStyle().Padding(0, 0)
+	}
+
 	// Check if we're in a CI environment or terminal doesn't support Unicode
 	if env.IsCI() || !env.SupportsUnicode() {
 		// Use ASCII borders for CI environments
-		return lipgloss.NewStyle().
+		style := lipgloss.NewStyle().
 			Border(lipgloss.NormalBorder()).
-			BorderForeground(cyan).
 			Padding(1, 2)
+		if cfg.ShouldShowColors() {
+			style = style.BorderForeground(cyan)
+		}
+		return style
 	}
+
 	// Use rounded borders for regular terminals
-	return lipgloss.NewStyle().
+	style := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
-		BorderForeground(cyan).
 		Padding(1, 2)
+	if cfg.ShouldShowColors() {
+		style = style.BorderForeground(cyan)
+	}
+	return style
 }
 
 // isCI/supportsUnicode logic moved to internal/env
@@ -85,7 +152,7 @@ func DisplayCertificate(cert *cert.Certificate, showFull bool) {
 		}
 	}
 
-	fmt.Println(titleStyle.Render(title))
+	fmt.Println(getTitleStyle().Render(title))
 	fmt.Println()
 
 	// Basic information table
@@ -149,11 +216,8 @@ func DisplayCertificate(cert *cert.Certificate, showFull bool) {
 
 // DisplayGenerationResult shows the result of certificate generation
 func DisplayGenerationResult(certPath, keyPath string) {
-	checkmark := "✓"
-    if env.IsCI() {
-		checkmark = "[OK]"
-	}
-	fmt.Println(successStyle.Render(fmt.Sprintf("%s Certificate generated successfully!", checkmark)))
+	checkmark := getEmoji("✓", "[OK]")
+	fmt.Println(getSuccessStyle().Render(fmt.Sprintf("%s Certificate generated successfully!", checkmark)))
 	fmt.Println()
 
 	table := [][]string{
@@ -167,11 +231,8 @@ func DisplayGenerationResult(certPath, keyPath string) {
 
 // DisplayConversionResult shows the result of certificate conversion
 func DisplayConversionResult(inputPath, outputPath, fromFormat, toFormat string) {
-	checkmark := "✓"
-    if env.IsCI() {
-		checkmark = "[OK]"
-	}
-	fmt.Println(successStyle.Render(fmt.Sprintf("%s Converted from %s to %s", checkmark, strings.ToUpper(fromFormat), strings.ToUpper(toFormat))))
+	checkmark := getEmoji("✓", "[OK]")
+	fmt.Println(getSuccessStyle().Render(fmt.Sprintf("%s Converted from %s to %s", checkmark, strings.ToUpper(fromFormat), strings.ToUpper(toFormat))))
 	fmt.Println()
 
 	table := [][]string{
@@ -186,45 +247,35 @@ func DisplayConversionResult(inputPath, outputPath, fromFormat, toFormat string)
 // DisplayVerificationResult shows certificate verification results
 func DisplayVerificationResult(result *cert.VerificationResult) {
 	title := "Verification Results"
-	fmt.Println(titleStyle.Render(title))
+	fmt.Println(getTitleStyle().Render(title))
 	fmt.Println()
 
 	// Overall status
-	checkmark := "✓"
-	crossMark := "✗"
-    if env.IsCI() {
-		checkmark = "[OK]"
-		crossMark = "[FAIL]"
-	}
+	checkmark := getEmoji("✓", "[OK]")
+	crossMark := getEmoji("✗", "[FAIL]")
 	if result.IsValid {
-		fmt.Println(successStyle.Render(fmt.Sprintf("%s Certificate is valid", checkmark)))
+		fmt.Println(getSuccessStyle().Render(fmt.Sprintf("%s Certificate is valid", checkmark)))
 	} else {
-		fmt.Println(errorStyle.Render(fmt.Sprintf("%s Certificate validation failed", crossMark)))
+		fmt.Println(getErrorStyle().Render(fmt.Sprintf("%s Certificate validation failed", crossMark)))
 	}
 	fmt.Println()
 
 	// Show errors
 	if len(result.Errors) > 0 {
-		crossMark := "✗"
-    if env.IsCI() {
-		crossMark = "[X]"
-	}
-		fmt.Println(errorStyle.Render("Errors:"))
+		errMark := getEmoji("✗", "[X]")
+		fmt.Println(getErrorStyle().Render("Errors:"))
 		for _, err := range result.Errors {
-			fmt.Printf("  %s %s\n", errorStyle.Render(crossMark), err)
+			fmt.Printf("  %s %s\n", getErrorStyle().Render(errMark), err)
 		}
 		fmt.Println()
 	}
 
 	// Show warnings
 	if len(result.Warnings) > 0 {
-		warnSymbol := "⚠"
-    if env.IsCI() {
-		warnSymbol = "[!]"
-	}
-		fmt.Println(warningStyle.Render("Warnings:"))
+		warnSymbol := getEmoji("⚠", "[!]")
+		fmt.Println(getWarningStyle().Render("Warnings:"))
 		for _, warning := range result.Warnings {
-			fmt.Printf("  %s %s\n", warningStyle.Render(warnSymbol), warning)
+			fmt.Printf("  %s %s\n", getWarningStyle().Render(warnSymbol), warning)
 		}
 		fmt.Println()
 	}
@@ -236,22 +287,18 @@ func DisplayVerificationResult(result *cert.VerificationResult) {
 	checks := [][]string{}
 
 	// Date checks
-	checkmark2 := "✓"
-	crossMark2 := "✗"
-    if env.IsCI() {
-		checkmark2 = "[OK]"
-		crossMark2 = "[X]"
-	}
+	checkmark2 := getEmoji("✓", "[OK]")
+	crossMark2 := getEmoji("✗", "[X]")
 	if cert.NotBefore.After(now) {
-		checks = append(checks, []string{crossMark2, "Not yet valid", errorStyle.Render("FAIL")})
+		checks = append(checks, []string{crossMark2, "Not yet valid", getErrorStyle().Render("FAIL")})
 	} else if cert.NotAfter.Before(now) {
-		checks = append(checks, []string{crossMark2, "Expired", errorStyle.Render("FAIL")})
+		checks = append(checks, []string{crossMark2, "Expired", getErrorStyle().Render("FAIL")})
 	} else {
-		checks = append(checks, []string{checkmark2, "Date validity", successStyle.Render("PASS")})
+		checks = append(checks, []string{checkmark2, "Date validity", getSuccessStyle().Render("PASS")})
 	}
 
 	if len(checks) > 0 {
-		fmt.Println(headerStyle.Render("Validation Checks:"))
+		fmt.Println(getHeaderStyle().Render("Validation Checks:"))
 		for _, check := range checks {
 			fmt.Printf("  %s %s: %s\n", check[0], check[1], check[2])
 		}
@@ -260,17 +307,17 @@ func DisplayVerificationResult(result *cert.VerificationResult) {
 
 // ShowError displays an error message
 func ShowError(message string) {
-	fmt.Println(errorStyle.Render(fmt.Sprintf("Error: %s", message)))
+	fmt.Println(getErrorStyle().Render(fmt.Sprintf("Error: %s", message)))
 }
 
 // ShowSuccess displays a success message
 func ShowSuccess(message string) {
-	fmt.Println(successStyle.Render(message))
+	fmt.Println(getSuccessStyle().Render(message))
 }
 
 // ShowInfo displays an info message
 func ShowInfo(message string) {
-	fmt.Println(keyStyle.Render(message))
+	fmt.Println(getKeyStyle().Render(message))
 }
 
 // formatTable creates a formatted table from key-value pairs
@@ -288,8 +335,8 @@ func formatTable(data [][]string) string {
 	for _, row := range data {
 		key := fmt.Sprintf("%-*s", maxKeyLen, row[0])
 		result.WriteString(fmt.Sprintf("%s: %s\n",
-			keyStyle.Render(key),
-			valueStyle.Render(row[1])))
+			getKeyStyle().Render(key),
+			getValueStyle().Render(row[1])))
 	}
 
 	return strings.TrimSuffix(result.String(), "\n")
@@ -324,9 +371,9 @@ func formatDate(t time.Time) string {
 	now := time.Now()
 
 	if t.Before(now) && t.After(now.AddDate(0, 0, -1)) {
-		return warningStyle.Render(formatted)
+		return getWarningStyle().Render(formatted)
 	} else if t.After(now) {
-		return successStyle.Render(formatted)
+		return getSuccessStyle().Render(formatted)
 	}
 
 	return formatted
@@ -335,11 +382,11 @@ func formatDate(t time.Time) string {
 // formatStatus formats certificate status with appropriate colors
 func formatStatus(cert *cert.Certificate) string {
 	if cert.IsExpired {
-		return errorStyle.Render(fmt.Sprintf("EXPIRED (%d days ago)", -cert.DaysUntilExpiry))
+		return getErrorStyle().Render(fmt.Sprintf("EXPIRED (%d days ago)", -cert.DaysUntilExpiry))
 	} else if cert.DaysUntilExpiry < 30 {
-		return warningStyle.Render(fmt.Sprintf("EXPIRING SOON (%d days remaining)", cert.DaysUntilExpiry))
+		return getWarningStyle().Render(fmt.Sprintf("EXPIRING SOON (%d days remaining)", cert.DaysUntilExpiry))
 	} else {
-		return successStyle.Render(fmt.Sprintf("Valid (%d days remaining)", cert.DaysUntilExpiry))
+		return getSuccessStyle().Render(fmt.Sprintf("Valid (%d days remaining)", cert.DaysUntilExpiry))
 	}
 }
 
@@ -430,7 +477,7 @@ func DisplayCertificateChain(chain []*cert.Certificate) {
 	}
 
 	fmt.Println()
-	fmt.Println(titleStyle.Render("Certificate Chain"))
+	fmt.Println(getTitleStyle().Render("Certificate Chain"))
 	fmt.Println()
 
 	for i, c := range chain {
@@ -447,13 +494,13 @@ func DisplayCertificateChain(chain []*cert.Certificate) {
 		var borderColor lipgloss.Color
 		if c.IsExpired {
 			borderColor = red
-			table = append(table, []string{"Status", errorStyle.Render("EXPIRED")})
+			table = append(table, []string{"Status", getErrorStyle().Render("EXPIRED")})
 		} else if c.DaysUntilExpiry < 30 {
 			borderColor = yellow
-			table = append(table, []string{"Status", warningStyle.Render(fmt.Sprintf("Expiring in %d days", c.DaysUntilExpiry))})
+			table = append(table, []string{"Status", getWarningStyle().Render(fmt.Sprintf("Expiring in %d days", c.DaysUntilExpiry))})
 		} else {
 			borderColor = green
-			table = append(table, []string{"Status", successStyle.Render("Valid")})
+			table = append(table, []string{"Status", getSuccessStyle().Render("Valid")})
 		}
 
 		content := formatTable(table)
@@ -482,7 +529,7 @@ func displayExtensions(cert *x509.Certificate) {
 	}
 
 	fmt.Println()
-	fmt.Println(headerStyle.Render("Certificate Extensions"))
+	fmt.Println(getHeaderStyle().Render("Certificate Extensions"))
 	fmt.Println()
 
 	// Display parsed extensions with details
@@ -496,38 +543,33 @@ func displayExtensions(cert *x509.Certificate) {
 func displayParsedExtensions(cert *x509.Certificate) {
 	// Key Usage
 	if cert.KeyUsage != 0 {
-		fmt.Println(keyStyle.Render("Key Usage") + getCriticalLabel(isExtensionCritical(cert, "2.5.29.15")))
+		fmt.Println(getKeyStyle().Render("Key Usage") + getCriticalLabel(isExtensionCritical(cert, "2.5.29.15")))
 		displayKeyUsage(cert.KeyUsage)
 		fmt.Println()
 	}
 
 	// Extended Key Usage
 	if len(cert.ExtKeyUsage) > 0 || len(cert.UnknownExtKeyUsage) > 0 {
-		fmt.Println(keyStyle.Render("Extended Key Usage") + getCriticalLabel(isExtensionCritical(cert, "2.5.29.37")))
+		fmt.Println(getKeyStyle().Render("Extended Key Usage") + getCriticalLabel(isExtensionCritical(cert, "2.5.29.37")))
 		displayExtendedKeyUsage(cert)
 		fmt.Println()
 	}
 
 	// Basic Constraints
 	if cert.BasicConstraintsValid {
-		fmt.Println(keyStyle.Render("Basic Constraints") + getCriticalLabel(isExtensionCritical(cert, "2.5.29.19")))
-		checkmark := "✓"
-		crossMark := "✗"
-		arrow := "→"
-		if env.IsCI() {
-			checkmark = "[OK]"
-			crossMark = "[X]"
-			arrow = "->"
-		}
+		fmt.Println(getKeyStyle().Render("Basic Constraints") + getCriticalLabel(isExtensionCritical(cert, "2.5.29.19")))
+		checkmark := getEmoji("✓", "[OK]")
+		crossMark := getEmoji("✗", "[X]")
+		arrow := getEmoji("→", "->")
 		if cert.IsCA {
-			fmt.Printf("  %s Certificate Authority: %s\n", successStyle.Render(checkmark), successStyle.Render("Yes"))
+			fmt.Printf("  %s Certificate Authority: %s\n", getSuccessStyle().Render(checkmark), getSuccessStyle().Render("Yes"))
 			if cert.MaxPathLen >= 0 {
-				fmt.Printf("  %s Max Path Length: %d\n", valueStyle.Render(arrow), cert.MaxPathLen)
+				fmt.Printf("  %s Max Path Length: %d\n", getValueStyle().Render(arrow), cert.MaxPathLen)
 			} else if cert.MaxPathLenZero {
-				fmt.Printf("  %s Max Path Length: %d\n", valueStyle.Render(arrow), 0)
+				fmt.Printf("  %s Max Path Length: %d\n", getValueStyle().Render(arrow), 0)
 			}
 		} else {
-			fmt.Printf("  %s Certificate Authority: %s\n", valueStyle.Render(crossMark), valueStyle.Render("No"))
+			fmt.Printf("  %s Certificate Authority: %s\n", getValueStyle().Render(crossMark), getValueStyle().Render("No"))
 		}
 		fmt.Println()
 	}
@@ -535,13 +577,10 @@ func displayParsedExtensions(cert *x509.Certificate) {
 	// Subject Alternative Names (skip if already shown in main display)
 	// We show a summary here since full list is in main display
 	if len(cert.DNSNames) > 0 || len(cert.IPAddresses) > 0 || len(cert.EmailAddresses) > 0 || len(cert.URIs) > 0 {
-		arrow := "→"
-		if env.IsCI() {
-			arrow = "->"
-		}
-		fmt.Println(keyStyle.Render("Subject Alternative Name") + getCriticalLabel(isExtensionCritical(cert, "2.5.29.17")))
+		arrow := getEmoji("→", "->")
+		fmt.Println(getKeyStyle().Render("Subject Alternative Name") + getCriticalLabel(isExtensionCritical(cert, "2.5.29.17")))
 		sanCount := len(cert.DNSNames) + len(cert.IPAddresses) + len(cert.EmailAddresses) + len(cert.URIs)
-		fmt.Printf("  %s %d SANs (", valueStyle.Render(arrow), sanCount)
+		fmt.Printf("  %s %d SANs (", getValueStyle().Render(arrow), sanCount)
 		parts := []string{}
 		if len(cert.DNSNames) > 0 {
 			parts = append(parts, fmt.Sprintf("%d DNS", len(cert.DNSNames)))
@@ -561,23 +600,19 @@ func displayParsedExtensions(cert *x509.Certificate) {
 
 	// Authority Info Access
 	if len(cert.OCSPServer) > 0 || len(cert.IssuingCertificateURL) > 0 {
-		arrow := "→"
-		link := "🔗"
-		if env.IsCI() {
-			arrow = "->"
-			link = "[URL]"
-		}
-		fmt.Println(keyStyle.Render("Authority Info Access"))
+		arrow := getEmoji("→", "->")
+		link := getEmoji("🔗", "[URL]")
+		fmt.Println(getKeyStyle().Render("Authority Info Access"))
 		if len(cert.OCSPServer) > 0 {
-			fmt.Printf("  %s OCSP:\n", valueStyle.Render(arrow))
+			fmt.Printf("  %s OCSP:\n", getValueStyle().Render(arrow))
 			for _, url := range cert.OCSPServer {
-				fmt.Printf("    %s %s\n", keyStyle.Render(link), url)
+				fmt.Printf("    %s %s\n", getKeyStyle().Render(link), url)
 			}
 		}
 		if len(cert.IssuingCertificateURL) > 0 {
-			fmt.Printf("  %s CA Issuers:\n", valueStyle.Render(arrow))
+			fmt.Printf("  %s CA Issuers:\n", getValueStyle().Render(arrow))
 			for _, url := range cert.IssuingCertificateURL {
-				fmt.Printf("    %s %s\n", keyStyle.Render(link), url)
+				fmt.Printf("    %s %s\n", getKeyStyle().Render(link), url)
 			}
 		}
 		fmt.Println()
@@ -585,27 +620,21 @@ func displayParsedExtensions(cert *x509.Certificate) {
 
 	// CRL Distribution Points
 	if len(cert.CRLDistributionPoints) > 0 {
-		link := "🔗"
-		if env.IsCI() {
-			link = "[URL]"
-		}
-		fmt.Println(keyStyle.Render("CRL Distribution Points"))
+		link := getEmoji("🔗", "[URL]")
+		fmt.Println(getKeyStyle().Render("CRL Distribution Points"))
 		for _, url := range cert.CRLDistributionPoints {
-			fmt.Printf("  %s %s\n", keyStyle.Render(link), url)
+			fmt.Printf("  %s %s\n", getKeyStyle().Render(link), url)
 		}
 		fmt.Println()
 	}
 
 	// Certificate Policies
 	if len(cert.PolicyIdentifiers) > 0 {
-		arrow := "→"
-		if env.IsCI() {
-			arrow = "->"
-		}
-		fmt.Println(keyStyle.Render("Certificate Policies"))
+		arrow := getEmoji("→", "->")
+		fmt.Println(getKeyStyle().Render("Certificate Policies"))
 		for _, oid := range cert.PolicyIdentifiers {
 			policyName := getPolicyName(oid.String())
-			fmt.Printf("  %s %s\n", valueStyle.Render(arrow), policyName)
+			fmt.Printf("  %s %s\n", getValueStyle().Render(arrow), policyName)
 		}
 		fmt.Println()
 	}
@@ -613,10 +642,7 @@ func displayParsedExtensions(cert *x509.Certificate) {
 
 // displayKeyUsage shows the key usage flags
 func displayKeyUsage(usage x509.KeyUsage) {
-    checkmark := "✓"
-    if env.IsCI() {
-        checkmark = "[OK]"
-    }
+	checkmark := getEmoji("✓", "[OK]")
 	usages := []struct {
 		flag x509.KeyUsage
 		name string
@@ -634,7 +660,7 @@ func displayKeyUsage(usage x509.KeyUsage) {
 
 	for _, u := range usages {
 		if usage&u.flag != 0 {
-			fmt.Printf("  %s %s\n", successStyle.Render(checkmark), u.name)
+			fmt.Printf("  %s %s\n", getSuccessStyle().Render(checkmark), u.name)
 		}
 	}
 }
@@ -658,20 +684,16 @@ func displayExtendedKeyUsage(cert *x509.Certificate) {
 		x509.ExtKeyUsageMicrosoftKernelCodeSigning:     "Microsoft Kernel Code Signing",
 	}
 
-    checkmark := "✓"
-    arrow := "→"
-    if env.IsCI() {
-        checkmark = "[OK]"
-        arrow = "->"
-    }
+	checkmark := getEmoji("✓", "[OK]")
+	arrow := getEmoji("→", "->")
 	for _, usage := range cert.ExtKeyUsage {
 		if name, ok := usageNames[usage]; ok {
-			fmt.Printf("  %s %s\n", successStyle.Render(checkmark), name)
+			fmt.Printf("  %s %s\n", getSuccessStyle().Render(checkmark), name)
 		}
 	}
 
 	for _, oid := range cert.UnknownExtKeyUsage {
-		fmt.Printf("  %s %s\n", valueStyle.Render(arrow), oid.String())
+		fmt.Printf("  %s %s\n", getValueStyle().Render(arrow), oid.String())
 	}
 }
 
@@ -714,21 +736,18 @@ func displayUnparsedExtensions(cert *x509.Certificate) {
 	}
 
 	if len(otherExts) > 0 {
-		fmt.Println(keyStyle.Render("Other Extensions"))
+		fmt.Println(getKeyStyle().Render("Other Extensions"))
+		arrow := getEmoji("→", "->")
 		for _, ext := range otherExts {
 			name := ext.Id.String()
 			if n, ok := oidNames[name]; ok {
 				name = n
 			}
-        arrow := "→"
-        if env.IsCI() {
-            arrow = "->"
-        }
 			critical := ""
 			if ext.Critical {
-				critical = errorStyle.Render(" [CRITICAL]")
+				critical = getErrorStyle().Render(" [CRITICAL]")
 			}
-			fmt.Printf("  %s %s%s\n", valueStyle.Render(arrow), name, critical)
+			fmt.Printf("  %s %s%s\n", getValueStyle().Render(arrow), name, critical)
 		}
 	}
 }
@@ -746,7 +765,7 @@ func isExtensionCritical(cert *x509.Certificate, oid string) bool {
 // getCriticalLabel returns a formatted critical label if critical
 func getCriticalLabel(critical bool) string {
 	if critical {
-		return errorStyle.Render(" [CRITICAL]")
+		return getErrorStyle().Render(" [CRITICAL]")
 	}
 	return ""
 }
@@ -804,23 +823,19 @@ func DisplayCSRInfo(info *cert.CSRInfo) {
 // DisplayTLSVersionResults shows TLS version test results
 func DisplayTLSVersionResults(result *cert.TLSResult) {
 	title := fmt.Sprintf("TLS Version Support for %s:%d", result.Host, result.Port)
-	fmt.Println(titleStyle.Render(title))
+	fmt.Println(getTitleStyle().Render(title))
 	fmt.Println()
 
-	// Determine symbols based on environment
-	checkmark := "✓"
-	crossMark := "✗"
-	if env.IsCI() {
-		checkmark = "[OK]"
-		crossMark = "[X]"
-	}
+	// Determine symbols based on config and environment
+	checkmark := getEmoji("✓", "[OK]")
+	crossMark := getEmoji("✗", "[X]")
 
 	// Create a table for version results
 	table := [][]string{}
 	for _, v := range result.Versions {
-		status := fmt.Sprintf("%s %s", errorStyle.Render(crossMark), errorStyle.Render("Not Supported"))
+		status := fmt.Sprintf("%s %s", getErrorStyle().Render(crossMark), getErrorStyle().Render("Not Supported"))
 		if v.Supported {
-			status = fmt.Sprintf("%s %s", successStyle.Render(checkmark), successStyle.Render("Supported"))
+			status = fmt.Sprintf("%s %s", getSuccessStyle().Render(checkmark), getSuccessStyle().Render("Supported"))
 		}
 		table = append(table, []string{v.Name, status})
 	}
@@ -841,16 +856,16 @@ func DisplayTLSVersionResults(result *cert.TLSResult) {
 
 	// Show summary
 	fmt.Println()
-	fmt.Println(headerStyle.Render("Summary"))
+	fmt.Println(getHeaderStyle().Render("Summary"))
 	fmt.Println()
 
 	if result.MinSupported != 0 {
 		minName := tlsVersionNames(result.MinSupported)
-		fmt.Printf("  %s Minimum supported version: %s\n", keyStyle.Render("→"), successStyle.Render(minName))
+		fmt.Printf("  %s Minimum supported version: %s\n", getKeyStyle().Render("→"), getSuccessStyle().Render(minName))
 	}
 	if result.MaxSupported != 0 {
 		maxName := tlsVersionNames(result.MaxSupported)
-		fmt.Printf("  %s Maximum supported version: %s\n", keyStyle.Render("→"), successStyle.Render(maxName))
+		fmt.Printf("  %s Maximum supported version: %s\n", getKeyStyle().Render("→"), getSuccessStyle().Render(maxName))
 	}
 
 	// Security recommendations
@@ -863,16 +878,14 @@ func DisplayTLSVersionResults(result *cert.TLSResult) {
 	}
 
 	if len(recommendations) > 0 {
-		warnSymbol := "⚠"
-		if env.IsCI() {
-			warnSymbol = "[!]"
-		}
-		fmt.Println(warningStyle.Render(fmt.Sprintf("%s Security Warning:", warnSymbol)))
+		warnSymbol := getEmoji("⚠", "[!]")
+		arrow := getEmoji("→", "->")
+		fmt.Println(getWarningStyle().Render(fmt.Sprintf("%s Security Warning:", warnSymbol)))
 		for _, rec := range recommendations {
-			fmt.Printf("  %s%s\n", warningStyle.Render("→"), rec)
+			fmt.Printf("  %s%s\n", getWarningStyle().Render(arrow), rec)
 		}
 		fmt.Println()
-		fmt.Println(keyStyle.Render("Recommendation: Consider disabling TLS 1.0 and TLS 1.1 for improved security."))
+		fmt.Println(getKeyStyle().Render("Recommendation: Consider disabling TLS 1.0 and TLS 1.1 for improved security."))
 	}
 }
 
