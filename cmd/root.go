@@ -1,12 +1,12 @@
 package cmd
 
 import (
-    "fmt"
+	"fmt"
 
-    "github.com/spf13/cobra"
+	"github.com/spf13/cobra"
 )
 
-var version = "0.2.1"
+var version = "0.2.2"
 
 var (
 	versionFlag bool
