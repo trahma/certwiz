@@ -3,6 +3,7 @@ package ui
 import (
 	"crypto/ecdsa"
 	"crypto/rsa"
+	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"fmt"
@@ -165,6 +166,14 @@ func DisplayCertificate(cert *cert.Certificate, showFull bool) {
 		{"Status", formatStatus(cert)},
 		{"Public Key", formatPublicKey(cert.PublicKey)},
 		{"Signature Algorithm", cert.SignatureAlgorithm.String()},
+	}
+
+	// Add TLS connection info if available (URL inspection only)
+	if cert.TLSVersion != 0 {
+		table = append(table, []string{"TLS Version", tls.VersionName(cert.TLSVersion)})
+	}
+	if cert.CipherSuite != 0 {
+		table = append(table, []string{"Cipher Suite", tls.CipherSuiteName(cert.CipherSuite)})
 	}
 
 	// Add SANs if present
@@ -833,9 +842,15 @@ func DisplayTLSVersionResults(result *cert.TLSResult) {
 	// Create a table for version results
 	table := [][]string{}
 	for _, v := range result.Versions {
-		status := fmt.Sprintf("%s %s", getErrorStyle().Render(crossMark), getErrorStyle().Render("Not Supported"))
+		var status string
 		if v.Supported {
-			status = fmt.Sprintf("%s %s", getSuccessStyle().Render(checkmark), getSuccessStyle().Render("Supported"))
+			cipherInfo := ""
+			if v.CipherSuite != 0 {
+				cipherInfo = fmt.Sprintf(" (%s)", tls.CipherSuiteName(v.CipherSuite))
+			}
+			status = fmt.Sprintf("%s %s%s", getSuccessStyle().Render(checkmark), getSuccessStyle().Render("Supported"), cipherInfo)
+		} else {
+			status = fmt.Sprintf("%s %s", getErrorStyle().Render(crossMark), getErrorStyle().Render("Not Supported"))
 		}
 		table = append(table, []string{v.Name, status})
 	}

@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.4] - 2026-01-23
+
+### Added
+- **Cipher suite information** displayed for URL inspections
+  - New "TLS Version" and "Cipher Suite" fields in `cert inspect` output
+  - Shows negotiated cipher suite for each TLS version in `cert tls` command
+  - JSON output includes `tls_version` and `cipher_suite` fields
+  - Only shown for URL inspections (not file-based inspection)
+
 ## [0.2.3] - 2026-01-13
 
 ### Added
@@ -227,6 +236,7 @@ All features from v0.1.6 are included in this release.
 - Binary named `cert` for ease of use
 - Project name remains `certwiz`
 
+[0.2.4]: https://github.com/trahma/certwiz/releases/tag/v0.2.4
 [0.2.3]: https://github.com/trahma/certwiz/releases/tag/v0.2.3
 [0.2.2]: https://github.com/trahma/certwiz/releases/tag/v0.2.2
 [0.2.1]: https://github.com/trahma/certwiz/releases/tag/v0.2.1

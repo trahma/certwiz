@@ -1,6 +1,7 @@
 package cert
 
 import (
+	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/json"
@@ -30,6 +31,8 @@ type JSONCertificate struct {
 	Source             string            `json:"source,omitempty"`
 	Format             string            `json:"format,omitempty"`
 	Chain              []JSONCertSummary `json:"chain,omitempty"`
+	TLSVersion         string            `json:"tls_version,omitempty"`
+	CipherSuite        string            `json:"cipher_suite,omitempty"`
 }
 
 // JSONSubject represents certificate subject/issuer in JSON format
@@ -84,10 +87,11 @@ type JSONOperationResult struct {
 
 // JSONTLSVersionInfo represents TLS version test info in JSON format
 type JSONTLSVersionInfo struct {
-	Version   string `json:"version"`
-	Name      string `json:"name"`
-	Supported bool   `json:"supported"`
-	Error     string `json:"error,omitempty"`
+	Version     string `json:"version"`
+	Name        string `json:"name"`
+	Supported   bool   `json:"supported"`
+	Error       string `json:"error,omitempty"`
+	CipherSuite string `json:"cipher_suite,omitempty"`
 }
 
 // JSONTLSResult represents TLS version test results in JSON format
@@ -116,6 +120,14 @@ func (c *Certificate) ToJSON() JSONCertificate {
 		DNSNames:           c.DNSNames,
 		Source:             c.Source,
 		Format:             c.Format,
+	}
+
+	// Add TLS connection info if available (URL inspection only)
+	if c.TLSVersion != 0 {
+		jc.TLSVersion = tls.VersionName(c.TLSVersion)
+	}
+	if c.CipherSuite != 0 {
+		jc.CipherSuite = tls.CipherSuiteName(c.CipherSuite)
 	}
 
 	// Convert IP addresses to strings
@@ -189,6 +201,9 @@ func (tr *TLSResult) ToJSON() JSONTLSResult {
 			Name:      v.Name,
 			Supported: v.Supported,
 			Error:     v.Error,
+		}
+		if v.Supported && v.CipherSuite != 0 {
+			jsonVersion.CipherSuite = tls.CipherSuiteName(v.CipherSuite)
 		}
 		jsonResult.Versions = append(jsonResult.Versions, jsonVersion)
 	}

@@ -34,6 +34,8 @@ type Certificate struct {
 	Format          string // PEM or DER
 	IsExpired       bool
 	DaysUntilExpiry int
+	TLSVersion      uint16 // Negotiated TLS version (0 for file inspection)
+	CipherSuite     uint16 // Negotiated cipher suite (0 for file inspection)
 }
 
 // InspectFile reads and parses a certificate file
@@ -158,8 +160,9 @@ func InspectURLWithOptions(targetURL string, port int, connectHost string, timeo
 	}
 	defer func() { _ = conn.Close() }()
 
-	// Get the peer certificates
-	certs := conn.ConnectionState().PeerCertificates
+	// Get the connection state
+	state := conn.ConnectionState()
+	certs := state.PeerCertificates
 	if len(certs) == 0 {
 		return nil, nil, fmt.Errorf("no certificates found")
 	}
@@ -171,6 +174,8 @@ func InspectURLWithOptions(targetURL string, port int, connectHost string, timeo
 		Format:          FormatDER,
 		IsExpired:       certs[0].NotAfter.Before(time.Now()),
 		DaysUntilExpiry: int(time.Until(certs[0].NotAfter).Hours() / 24),
+		TLSVersion:      state.Version,
+		CipherSuite:     state.CipherSuite,
 	}
 
 	// Build chain from remaining certificates
@@ -841,10 +846,11 @@ const (
 
 // TLSVersionInfo contains information about a single TLS version test
 type TLSVersionInfo struct {
-	Version TLSVersion
-	Name    string
-	Supported bool
-	Error   string
+	Version     TLSVersion
+	Name        string
+	Supported   bool
+	Error       string
+	CipherSuite uint16 // Negotiated cipher suite for this version (0 if not supported)
 }
 
 // TLSResult contains the results of TLS version testing
@@ -906,6 +912,7 @@ func CheckTLSVersions(host string, port int, timeout time.Duration) (*TLSResult,
 			info.Supported = false
 		} else {
 			info.Supported = true
+			info.CipherSuite = conn.ConnectionState().CipherSuite
 			_ = conn.Close()
 		}
 
