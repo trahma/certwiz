@@ -870,6 +870,15 @@ var tlsVersionNames = map[TLSVersion]string{
 	TLSVersionTLS13: "TLS 1.3",
 }
 
+// TLSVersionName returns the human-readable name for a TLS version.
+// This provides Go 1.20 compatibility (tls.VersionName was added in Go 1.21).
+func TLSVersionName(version uint16) string {
+	if name, ok := tlsVersionNames[TLSVersion(version)]; ok {
+		return name
+	}
+	return fmt.Sprintf("0x%04x", version)
+}
+
 // CheckTLSVersions tests which TLS versions are supported by a server
 func CheckTLSVersions(host string, port int, timeout time.Duration) (*TLSResult, error) {
 	result := &TLSResult{

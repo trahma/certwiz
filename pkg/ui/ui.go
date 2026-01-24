@@ -13,6 +13,7 @@ import (
 	"certwiz/internal/config"
 	env "certwiz/internal/environ"
 	"certwiz/pkg/cert"
+	certpkg "certwiz/pkg/cert"
 
 	"github.com/charmbracelet/lipgloss"
 	"golang.org/x/term"
@@ -170,7 +171,7 @@ func DisplayCertificate(cert *cert.Certificate, showFull bool) {
 
 	// Add TLS connection info if available (URL inspection only)
 	if cert.TLSVersion != 0 {
-		table = append(table, []string{"TLS Version", tls.VersionName(cert.TLSVersion)})
+		table = append(table, []string{"TLS Version", certpkg.TLSVersionName(cert.TLSVersion)})
 	}
 	if cert.CipherSuite != 0 {
 		table = append(table, []string{"Cipher Suite", tls.CipherSuiteName(cert.CipherSuite)})

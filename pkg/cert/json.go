@@ -124,7 +124,7 @@ func (c *Certificate) ToJSON() JSONCertificate {
 
 	// Add TLS connection info if available (URL inspection only)
 	if c.TLSVersion != 0 {
-		jc.TLSVersion = tls.VersionName(c.TLSVersion)
+		jc.TLSVersion = TLSVersionName(c.TLSVersion)
 	}
 	if c.CipherSuite != 0 {
 		jc.CipherSuite = tls.CipherSuiteName(c.CipherSuite)
