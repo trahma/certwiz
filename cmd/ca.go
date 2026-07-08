@@ -41,7 +41,11 @@ Examples:
   cert ca --cn "Secure CA" --key-size 4096 --output /etc/pki/`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if caCN == "" {
-			return fmt.Errorf("common name (--cn) is required")
+			err := fmt.Errorf("common name (--cn) is required")
+			if jsonOutput {
+				printJSONError(err)
+			}
+			return err
 		}
 
 		// Prepare options
@@ -59,14 +63,29 @@ Examples:
 		}
 
 		// Generate CA certificate
-		fmt.Printf("%s Generating Certificate Authority...\n", getEmoji("🔐", "[CA]"))
+		if !jsonOutput {
+			fmt.Printf("%s Generating Certificate Authority...\n", getEmoji("🔐", "[CA]"))
+		}
 
 		certPath := filepath.Join(caOutput, sanitizeCAFilename(caCN)+"-ca.crt")
 		keyPath := filepath.Join(caOutput, sanitizeCAFilename(caCN)+"-ca.key")
 
 		err := cert.GenerateCA(options, certPath, keyPath)
 		if err != nil {
-			return fmt.Errorf("failed to generate CA: %w", err)
+			err = fmt.Errorf("failed to generate CA: %w", err)
+			if jsonOutput {
+				printJSONError(err)
+			}
+			return err
+		}
+
+		if jsonOutput {
+			printJSON(cert.JSONOperationResult{
+				Success: true,
+				Message: "Certificate Authority generated successfully",
+				Files:   []string{certPath, keyPath},
+			})
+			return nil
 		}
 
 		// Display success message

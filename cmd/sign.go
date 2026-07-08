@@ -42,14 +42,20 @@ Examples:
   cert sign --csr server.csr --ca ca.crt --ca-key ca.key --san server.local --san *.server.local`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// Validate required arguments
-		if signCSR == "" {
-			return fmt.Errorf("CSR file (--csr) is required")
+		var validationErr error
+		switch {
+		case signCSR == "":
+			validationErr = fmt.Errorf("CSR file (--csr) is required")
+		case signCA == "":
+			validationErr = fmt.Errorf("CA certificate (--ca) is required")
+		case signCAKey == "":
+			validationErr = fmt.Errorf("CA private key (--ca-key) is required")
 		}
-		if signCA == "" {
-			return fmt.Errorf("CA certificate (--ca) is required")
-		}
-		if signCAKey == "" {
-			return fmt.Errorf("CA private key (--ca-key) is required")
+		if validationErr != nil {
+			if jsonOutput {
+				printJSONError(validationErr)
+			}
+			return validationErr
 		}
 
 		// Prepare options
@@ -74,11 +80,26 @@ Examples:
 		certPath := filepath.Join(signOutput, csrBase+".crt")
 
 		// Sign the CSR
-		fmt.Printf("%s Signing Certificate Signing Request...\n", getEmoji("🖊️", "[SIGN]"))
+		if !jsonOutput {
+			fmt.Printf("%s Signing Certificate Signing Request...\n", getEmoji("🖊️", "[SIGN]"))
+		}
 
 		err := cert.SignCSR(options, certPath)
 		if err != nil {
-			return fmt.Errorf("failed to sign CSR: %w", err)
+			err = fmt.Errorf("failed to sign CSR: %w", err)
+			if jsonOutput {
+				printJSONError(err)
+			}
+			return err
+		}
+
+		if jsonOutput {
+			printJSON(cert.JSONOperationResult{
+				Success: true,
+				Message: "Certificate signed successfully",
+				Files:   []string{certPath},
+			})
+			return nil
 		}
 
 		// Display success message

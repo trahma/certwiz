@@ -47,7 +47,11 @@ Examples:
   cert csr --cn secure.example.com --key-size 4096 --output /etc/ssl/`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if csrCN == "" {
-			return fmt.Errorf("common name (--cn) is required")
+			err := fmt.Errorf("common name (--cn) is required")
+			if jsonOutput {
+				printJSONError(err)
+			}
+			return err
 		}
 
 		// Prepare options
@@ -69,14 +73,29 @@ Examples:
 		}
 
 		// Generate CSR
-		fmt.Printf("%s Generating Certificate Signing Request...\n", getEmoji("🔐", "[CSR]"))
+		if !jsonOutput {
+			fmt.Printf("%s Generating Certificate Signing Request...\n", getEmoji("🔐", "[CSR]"))
+		}
 
 		csrPath := filepath.Join(csrOutput, sanitizeFilename(csrCN)+".csr")
 		keyPath := filepath.Join(csrOutput, sanitizeFilename(csrCN)+".key")
 
 		err := cert.GenerateCSR(options, csrPath, keyPath)
 		if err != nil {
-			return fmt.Errorf("failed to generate CSR: %w", err)
+			err = fmt.Errorf("failed to generate CSR: %w", err)
+			if jsonOutput {
+				printJSONError(err)
+			}
+			return err
+		}
+
+		if jsonOutput {
+			printJSON(cert.JSONOperationResult{
+				Success: true,
+				Message: "Certificate Signing Request generated successfully",
+				Files:   []string{csrPath, keyPath},
+			})
+			return nil
 		}
 
 		// Display success message

@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `--json` output support for the `ca`, `csr`, `sign`, and `convert` commands
+  - Success output uses the standard operation result format (`success`, `message`, `files`)
+  - Errors are emitted as JSON payloads when `--json` is set
+
+### Fixed
+- `cert tls` now works with URLs (`cert tls https://example.com`) and hostnames starting with "http" (e.g. `httpbin.org:8443`)
+- Generated certificates (`generate`, `ca`) now use random serial numbers instead of a fixed serial of 1, avoiding RFC 5280 violations and browser errors when regenerating certificates
+- `cert update` now aborts if the installer download returns a non-200 HTTP status instead of executing the error page
+- `--san` IP prefix is now case-insensitive (`ip:10.0.0.1` no longer becomes a DNS name)
+- Invalid `--timeout` values now produce an error instead of being silently ignored
+- URI SANs in CSRs are now shown by `ParseCSR` and routed to `uris` in JSON output
+- IPv6 addresses are now handled correctly when building dial addresses
+
 ## [0.2.4] - 2026-01-23
 
 ### Added

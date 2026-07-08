@@ -168,4 +168,109 @@ func TestJSONOutput(t *testing.T) {
 		// Reset for other tests
 		jsonOutput = false
 	})
+
+	// Helper to run a command's RunE with JSON output and return the parsed result
+	runJSON := func(t *testing.T, run func() error) (map[string]interface{}, error) {
+		t.Helper()
+		jsonOutput = true
+		defer func() { jsonOutput = false }()
+
+		old := os.Stdout
+		r, w, _ := os.Pipe()
+		os.Stdout = w
+
+		runErr := run()
+
+		w.Close()
+		os.Stdout = old
+		var buf bytes.Buffer
+		_, _ = io.Copy(&buf, r)
+
+		var result map[string]interface{}
+		if err := json.Unmarshal(buf.Bytes(), &result); err != nil {
+			t.Fatalf("Failed to parse JSON output: %v\nOutput: %s", err, buf.String())
+		}
+		return result, runErr
+	}
+
+	checkOperationResult := func(t *testing.T, result map[string]interface{}, wantFiles int) {
+		t.Helper()
+		if success, ok := result["success"].(bool); !ok || !success {
+			t.Error("Expected success: true in JSON output")
+		}
+		if files, ok := result["files"].([]interface{}); !ok || len(files) != wantFiles {
+			t.Errorf("Expected %d files in JSON output, got %v", wantFiles, result["files"])
+		}
+	}
+
+	// Test ca command with JSON output
+	t.Run("CAJSON", func(t *testing.T) {
+		caCN = "JSON Test CA"
+		caOutput = tmpDir
+		caKeySize = 2048
+		caDays = 365
+
+		result, err := runJSON(t, func() error { return caCmd.RunE(caCmd, []string{}) })
+		if err != nil {
+			t.Fatalf("ca command failed: %v", err)
+		}
+		checkOperationResult(t, result, 2)
+	})
+
+	// Test csr command with JSON output
+	t.Run("CSRJSON", func(t *testing.T) {
+		csrCN = "csr-json-test.local"
+		csrOutput = tmpDir
+		csrKeySize = 2048
+
+		result, err := runJSON(t, func() error { return csrCmd.RunE(csrCmd, []string{}) })
+		if err != nil {
+			t.Fatalf("csr command failed: %v", err)
+		}
+		checkOperationResult(t, result, 2)
+	})
+
+	// Test sign command with JSON output (uses the CA and CSR created above)
+	t.Run("SignJSON", func(t *testing.T) {
+		signCSR = filepath.Join(tmpDir, "csr-json-test.local.csr")
+		signCA = filepath.Join(tmpDir, "JSON_Test_CA-ca.crt")
+		signCAKey = filepath.Join(tmpDir, "JSON_Test_CA-ca.key")
+		signOutput = tmpDir
+		signDays = 365
+
+		result, err := runJSON(t, func() error { return signCmd.RunE(signCmd, []string{}) })
+		if err != nil {
+			t.Fatalf("sign command failed: %v", err)
+		}
+		checkOperationResult(t, result, 1)
+	})
+
+	// Test convert command with JSON output
+	t.Run("ConvertJSON", func(t *testing.T) {
+		inputPath := filepath.Join(tmpDir, "inspect-test.local.crt")
+		outputPath := filepath.Join(tmpDir, "inspect-test.local.der")
+		convertFormat = "der"
+
+		result, err := runJSON(t, func() error { return convertCmd.RunE(convertCmd, []string{inputPath, outputPath}) })
+		if err != nil {
+			t.Fatalf("convert command failed: %v", err)
+		}
+		checkOperationResult(t, result, 1)
+	})
+
+	// Test that JSON errors are emitted as JSON payloads
+	t.Run("ErrorJSON", func(t *testing.T) {
+		caCN = ""
+
+		result, err := runJSON(t, func() error { return caCmd.RunE(caCmd, []string{}) })
+		if err == nil {
+			t.Fatal("Expected error for missing --cn")
+		}
+		if success, ok := result["success"].(bool); !ok || success {
+			t.Error("Expected success: false in JSON error output")
+		}
+		if msg, ok := result["error"].(string); !ok || msg == "" {
+			t.Error("Expected non-empty error message in JSON error output")
+		}
+	})
 }

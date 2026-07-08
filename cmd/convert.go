@@ -34,8 +34,13 @@ Examples:
 
 		// Check if input file exists
         if _, err := os.Stat(inputPath); os.IsNotExist(err) {
-            ui.ShowError("Input file does not exist: " + inputPath)
-            return fmt.Errorf("input file does not exist: %s", inputPath)
+            err := fmt.Errorf("input file does not exist: %s", inputPath)
+            if jsonOutput {
+                printJSONError(err)
+            } else {
+                ui.ShowError(err.Error())
+            }
+            return err
         }
 
 		// Detect input format for display purposes
@@ -50,14 +55,28 @@ Examples:
 			inputFormat = "unknown"
 		}
 
-		ui.ShowInfo("Converting certificate format...")
+		if !jsonOutput {
+			ui.ShowInfo("Converting certificate format...")
+		}
 
         if err := cert.Convert(inputPath, outputPath, convertFormat); err != nil {
-            ui.ShowError(err.Error())
+            if jsonOutput {
+                printJSONError(err)
+            } else {
+                ui.ShowError(err.Error())
+            }
             return err
         }
 
-        ui.DisplayConversionResult(inputPath, outputPath, inputFormat, convertFormat)
+        if jsonOutput {
+            printJSON(cert.JSONOperationResult{
+                Success: true,
+                Message: fmt.Sprintf("Converted from %s to %s", strings.ToUpper(inputFormat), strings.ToUpper(convertFormat)),
+                Files:   []string{outputPath},
+            })
+        } else {
+            ui.DisplayConversionResult(inputPath, outputPath, inputFormat, convertFormat)
+        }
         return nil
     },
 }

@@ -33,8 +33,13 @@ Examples:
   cert generate --cn server --san IP:192.168.1.100 --san localhost`,
     RunE: func(cmd *cobra.Command, args []string) error {
         if generateCN == "" {
-            ui.ShowError("Common Name (--cn) is required")
-            return fmt.Errorf("missing required flag: --cn")
+            err := fmt.Errorf("missing required flag: --cn")
+            if jsonOutput {
+                printJSONError(err)
+            } else {
+                ui.ShowError("Common Name (--cn) is required")
+            }
+            return err
         }
 
 		opts := cert.GenerateOptions{
