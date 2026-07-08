@@ -14,6 +14,16 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
         go-version: ['1.20', '1.21']
+        # Go <=1.21 binaries lack LC_UUID, which dyld on the macOS 15.4+
+        # runners intermittently refuses to load; test macOS on 1.23 only
+        exclude:
+          - os: macos-latest
+            go-version: '1.20'
+          - os: macos-latest
+            go-version: '1.21'
+        include:
+          - os: macos-latest
+            go-version: '1.23'
     
     steps:
     - name: Checkout code
