@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-07-07
+
 ### Added
 - **SHA-256 and SHA-1 fingerprints** in `cert inspect` output and JSON (`fingerprint_sha256`, `fingerprint_sha1`)
 - **`--key` flag for `cert verify`** to check that a private key matches a certificate (PKCS#8, PKCS#1, and EC keys supported); JSON output includes `key_matches`
