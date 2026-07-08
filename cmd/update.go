@@ -58,6 +58,11 @@ This command will:
 			os.Exit(1)
 		}
 		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			fmt.Fprintf(os.Stderr, "Error downloading installer: unexpected status %s\n", resp.Status)
+			os.Exit(1)
+		}
 		
 		// Create the installer file
 		installerFile, err := os.Create(installerPath)

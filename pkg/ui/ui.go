@@ -875,13 +875,14 @@ func DisplayTLSVersionResults(result *cert.TLSResult) {
 	fmt.Println(getHeaderStyle().Render("Summary"))
 	fmt.Println()
 
+	arrow := getEmoji("→", "->")
 	if result.MinSupported != 0 {
 		minName := tlsVersionNames(result.MinSupported)
-		fmt.Printf("  %s Minimum supported version: %s\n", getKeyStyle().Render("→"), getSuccessStyle().Render(minName))
+		fmt.Printf("  %s Minimum supported version: %s\n", getKeyStyle().Render(arrow), getSuccessStyle().Render(minName))
 	}
 	if result.MaxSupported != 0 {
 		maxName := tlsVersionNames(result.MaxSupported)
-		fmt.Printf("  %s Maximum supported version: %s\n", getKeyStyle().Render("→"), getSuccessStyle().Render(maxName))
+		fmt.Printf("  %s Maximum supported version: %s\n", getKeyStyle().Render(arrow), getSuccessStyle().Render(maxName))
 	}
 
 	// Security recommendations
@@ -895,7 +896,6 @@ func DisplayTLSVersionResults(result *cert.TLSResult) {
 
 	if len(recommendations) > 0 {
 		warnSymbol := getEmoji("⚠", "[!]")
-		arrow := getEmoji("→", "->")
 		fmt.Println(getWarningStyle().Render(fmt.Sprintf("%s Security Warning:", warnSymbol)))
 		for _, rec := range recommendations {
 			fmt.Printf("  %s%s\n", getWarningStyle().Render(arrow), rec)

@@ -1,6 +1,8 @@
 package cmd
 
 import (
+    "fmt"
+    "net"
     "os"
     "strconv"
     "strings"
@@ -67,13 +69,13 @@ Examples:
 			port := inspectPort
 			connectHost := ""
 
-			// Extract port from target if specified
-			if strings.Contains(target, ":") && !strings.HasPrefix(target, "http") {
-				parts := strings.Split(target, ":")
-				if len(parts) == 2 {
-					if p, err := strconv.Atoi(parts[1]); err == nil {
-						target = parts[0]
-						port = p
+			// Extract port from target if specified (URLs with a scheme are
+			// parsed later; handles IPv6 like [::1]:443)
+			if !strings.Contains(target, "://") {
+				if h, p, err := net.SplitHostPort(target); err == nil {
+					if pn, err := strconv.Atoi(p); err == nil {
+						target = h
+						port = pn
 					}
 				}
 			}
@@ -82,13 +84,10 @@ Examples:
 			if inspectConnect != "" {
 				connectHost = inspectConnect
 				// Check if connect has a port specified
-				if strings.Contains(connectHost, ":") {
-					parts := strings.Split(connectHost, ":")
-					if len(parts) == 2 {
-						if p, err := strconv.Atoi(parts[1]); err == nil {
-							connectHost = parts[0]
-							port = p // Override port with the one from --connect
-						}
+				if h, p, err := net.SplitHostPort(connectHost); err == nil {
+					if pn, err := strconv.Atoi(p); err == nil {
+						connectHost = h
+						port = pn // Override port with the one from --connect
 					}
 				}
 			}
@@ -96,9 +95,11 @@ Examples:
 			// Determine timeout
             timeout := 5 * time.Second
             if inspectTimeout != "" {
-                if d, err := time.ParseDuration(inspectTimeout); err == nil {
-                    timeout = d
+                d, err := time.ParseDuration(inspectTimeout)
+                if err != nil {
+                    return fmt.Errorf("invalid --timeout value %q: %w", inspectTimeout, err)
                 }
+                timeout = d
             }
 
 			// Use the enhanced function that supports connect host, timeout, and signature algorithm preference

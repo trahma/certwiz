@@ -15,8 +15,8 @@ import (
 func splitSANs(sans []string) (dns []string, ips []net.IP, emails []string, uris []*url.URL) {
     for _, san := range sans {
         switch {
-        case strings.HasPrefix(san, "IP:"):
-            if ip := net.ParseIP(strings.TrimPrefix(san, "IP:")); ip != nil {
+        case strings.HasPrefix(strings.ToLower(san), "ip:"):
+            if ip := net.ParseIP(san[len("ip:"):]); ip != nil {
                 ips = append(ips, ip)
             }
         case strings.HasPrefix(strings.ToLower(san), "email:"):

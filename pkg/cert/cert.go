@@ -15,6 +15,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -102,14 +103,13 @@ func InspectURLWithOptions(targetURL string, port int, connectHost string, timeo
 	
 	if connectHost != "" {
 		// Use the provided connect host
-		dialHost = fmt.Sprintf("%s:%d", connectHost, port)
+		dialHost = net.JoinHostPort(connectHost, strconv.Itoa(port))
 	} else {
 		// Connect directly to the target
-		host := u.Hostname()
 		if u.Port() != "" {
 			dialHost = net.JoinHostPort(u.Hostname(), u.Port())
 		} else {
-			dialHost = fmt.Sprintf("%s:%d", host, port)
+			dialHost = net.JoinHostPort(u.Hostname(), strconv.Itoa(port))
 		}
 	}
 
@@ -194,6 +194,17 @@ func InspectURLWithOptions(targetURL string, port int, connectHost string, timeo
 	return serverCert, chain, nil
 }
 
+// newSerialNumber generates a random 128-bit serial number.
+// Serial numbers must be unique per issuer (RFC 5280); reusing them causes
+// clients like Firefox to reject regenerated certificates.
+func newSerialNumber() (*big.Int, error) {
+	serial, err := rand.Int(rand.Reader, new(big.Int).Lsh(big.NewInt(1), 128))
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate serial number: %w", err)
+	}
+	return serial, nil
+}
+
 // Generate creates a new self-signed certificate
 func Generate(opts GenerateOptions) error {
 	// Generate private key
@@ -202,9 +213,14 @@ func Generate(opts GenerateOptions) error {
 		return fmt.Errorf("failed to generate private key: %w", err)
 	}
 
+	serialNumber, err := newSerialNumber()
+	if err != nil {
+		return err
+	}
+
 	// Create certificate template
 	template := x509.Certificate{
-		SerialNumber: big.NewInt(1),
+		SerialNumber: serialNumber,
 		Subject: pkix.Name{
 			CommonName: opts.CommonName,
 		},
@@ -533,6 +549,9 @@ func ParseCSR(data []byte) (*CSRInfo, error) {
 	for _, email := range csr.EmailAddresses {
 		info.SANs = append(info.SANs, "email:"+email)
 	}
+	for _, uri := range csr.URIs {
+		info.SANs = append(info.SANs, "uri:"+uri.String())
+	}
 
 	// Determine public key info
 	switch pub := csr.PublicKey.(type) {
@@ -566,9 +585,14 @@ func GenerateCA(options CAOptions, certPath, keyPath string) error {
 		subject.Country = []string{options.Country}
 	}
 
+	serialNumber, err := newSerialNumber()
+	if err != nil {
+		return err
+	}
+
 	// Prepare CA certificate template
 	template := x509.Certificate{
-		SerialNumber: big.NewInt(1),
+		SerialNumber: serialNumber,
 		Subject:      subject,
 		NotBefore:    time.Now(),
 		NotAfter:     time.Now().AddDate(0, 0, options.Days),
@@ -710,9 +734,9 @@ func SignCSR(options SignOptions, certPath string) error {
 	}
 
 	// Generate a random serial number
-	serialNumber, err := rand.Int(rand.Reader, new(big.Int).Lsh(big.NewInt(1), 128))
+	serialNumber, err := newSerialNumber()
 	if err != nil {
-		return fmt.Errorf("failed to generate serial number: %w", err)
+		return err
 	}
 
 	// Prepare certificate template based on CSR
@@ -887,7 +911,7 @@ func CheckTLSVersions(host string, port int, timeout time.Duration) (*TLSResult,
 		Versions: make([]TLSVersionInfo, 0, 4),
 	}
 
-	dialHost := fmt.Sprintf("%s:%d", host, port)
+	dialHost := net.JoinHostPort(host, strconv.Itoa(port))
 	dialer := &net.Dialer{Timeout: timeout}
 
 	// Test each TLS version

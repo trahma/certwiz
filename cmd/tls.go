@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"fmt"
+	"net"
 	"strconv"
 	"strings"
 	"time"
@@ -34,25 +36,32 @@ Examples:
 	RunE: func(cmd *cobra.Command, args []string) error {
 		target := args[0]
 
-		// Extract port from target if specified
+		// Strip URL scheme and path if present (e.g. https://example.com/path)
 		port := tlsPort
 		host := target
-		if strings.Contains(target, ":") && !strings.HasPrefix(target, "http") {
-			parts := strings.Split(target, ":")
-			if len(parts) == 2 {
-				if p, err := strconv.Atoi(parts[1]); err == nil {
-					host = parts[0]
-					port = p
-				}
+		if i := strings.Index(host, "://"); i != -1 {
+			host = host[i+3:]
+		}
+		if i := strings.Index(host, "/"); i != -1 {
+			host = host[:i]
+		}
+
+		// Extract port from target if specified (handles IPv6 like [::1]:443)
+		if h, p, err := net.SplitHostPort(host); err == nil {
+			if pn, err := strconv.Atoi(p); err == nil {
+				host = h
+				port = pn
 			}
 		}
 
 		// Determine timeout
 		timeout := 5 * time.Second
 		if tlsTimeout != "" {
-			if d, err := time.ParseDuration(tlsTimeout); err == nil {
-				timeout = d
+			d, err := time.ParseDuration(tlsTimeout)
+			if err != nil {
+				return fmt.Errorf("invalid --timeout value %q: %w", tlsTimeout, err)
 			}
+			timeout = d
 		}
 
 		// Test TLS versions

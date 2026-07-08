@@ -6,6 +6,7 @@ import (
 	"crypto/x509/pkix"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 )
 
@@ -163,11 +164,14 @@ func (info *CSRInfo) ToJSON() JSONCSRInfo {
 
 	// Process SANs
 	for _, san := range info.SANs {
-		if len(san) > 3 && san[:3] == "IP:" {
-			ji.IPAddresses = append(ji.IPAddresses, san[3:])
-		} else if len(san) > 6 && san[:6] == "email:" {
-			ji.EmailAddresses = append(ji.EmailAddresses, san[6:])
-		} else {
+		switch {
+		case strings.HasPrefix(san, "IP:"):
+			ji.IPAddresses = append(ji.IPAddresses, strings.TrimPrefix(san, "IP:"))
+		case strings.HasPrefix(san, "email:"):
+			ji.EmailAddresses = append(ji.EmailAddresses, strings.TrimPrefix(san, "email:"))
+		case strings.HasPrefix(san, "uri:"):
+			ji.URIs = append(ji.URIs, strings.TrimPrefix(san, "uri:"))
+		default:
 			ji.DNSNames = append(ji.DNSNames, san)
 		}
 	}
