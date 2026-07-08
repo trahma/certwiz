@@ -1,9 +1,12 @@
 package cert
 
 import (
+	"crypto"
 	"crypto/ecdsa"
 	"crypto/rand"
 	"crypto/rsa"
+	"crypto/sha1" //nolint:gosec // used for fingerprint display only
+	"crypto/sha256"
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
@@ -39,25 +42,66 @@ type Certificate struct {
 	CipherSuite     uint16 // Negotiated cipher suite (0 for file inspection)
 }
 
-// InspectFile reads and parses a certificate file
-func InspectFile(filepath string) (*Certificate, error) {
-	data, err := os.ReadFile(filepath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read file: %w", err)
+// formatFingerprint renders a digest as colon-separated uppercase hex,
+// matching the format used by openssl and browsers.
+func formatFingerprint(sum []byte) string {
+	parts := make([]string, len(sum))
+	for i, b := range sum {
+		parts[i] = fmt.Sprintf("%02X", b)
 	}
+	return strings.Join(parts, ":")
+}
 
-	cert, format, err := parseCertificate(data)
+// FingerprintSHA256 returns the SHA-256 fingerprint of the certificate.
+func (c *Certificate) FingerprintSHA256() string {
+	sum := sha256.Sum256(c.Raw)
+	return formatFingerprint(sum[:])
+}
+
+// FingerprintSHA1 returns the SHA-1 fingerprint of the certificate.
+// SHA-1 is provided for comparison with legacy tooling only.
+func (c *Certificate) FingerprintSHA1() string {
+	sum := sha1.Sum(c.Raw) //nolint:gosec // fingerprint display, not signing
+	return formatFingerprint(sum[:])
+}
+
+// InspectData parses one or more certificates from raw PEM or DER data.
+// PEM data may contain multiple certificates (e.g. a fullchain bundle).
+func InspectData(data []byte, source string) ([]*Certificate, error) {
+	certs, format, err := parseCertificates(data)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse certificate: %w", err)
 	}
 
-	return &Certificate{
-		Certificate:     cert,
-		Source:          filepath,
-		Format:          format,
-		IsExpired:       cert.NotAfter.Before(time.Now()),
-		DaysUntilExpiry: int(time.Until(cert.NotAfter).Hours() / 24),
-	}, nil
+	result := make([]*Certificate, 0, len(certs))
+	for _, c := range certs {
+		result = append(result, &Certificate{
+			Certificate:     c,
+			Source:          source,
+			Format:          format,
+			IsExpired:       c.NotAfter.Before(time.Now()),
+			DaysUntilExpiry: int(time.Until(c.NotAfter).Hours() / 24),
+		})
+	}
+	return result, nil
+}
+
+// InspectFileAll reads a certificate file and parses every certificate in it.
+func InspectFileAll(filepath string) ([]*Certificate, error) {
+	data, err := os.ReadFile(filepath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read file: %w", err)
+	}
+	return InspectData(data, filepath)
+}
+
+// InspectFile reads a certificate file and returns the first certificate
+func InspectFile(filepath string) (*Certificate, error) {
+	certs, err := InspectFileAll(filepath)
+	if err != nil {
+		return nil, err
+	}
+	return certs[0], nil
 }
 
 // InspectURL connects to a URL and retrieves its certificate
@@ -327,9 +371,24 @@ func Convert(inputPath, outputPath, format string) error {
 	return nil
 }
 
+// VerifyOptions contains options for certificate verification
+type VerifyOptions struct {
+	CertPath  string
+	CAPath    string        // optional: CA bundle for chain verification
+	Hostname  string        // optional: hostname to verify against the certificate
+	KeyPath   string        // optional: private key to check against the certificate
+	ExpiresIn time.Duration // optional: fail if the certificate expires within this window
+}
+
 // Verify checks certificate validity and hostname matching
 func Verify(certPath, caPath, hostname string) (*VerificationResult, error) {
-    cert, err := InspectFile(certPath)
+	return VerifyWithOptions(VerifyOptions{CertPath: certPath, CAPath: caPath, Hostname: hostname})
+}
+
+// VerifyWithOptions checks certificate validity, hostname matching, chain
+// trust, key matching, and expiry thresholds depending on the options set.
+func VerifyWithOptions(opts VerifyOptions) (*VerificationResult, error) {
+    cert, err := InspectFile(opts.CertPath)
     if err != nil {
         return nil, err
     }
@@ -349,19 +408,42 @@ func Verify(certPath, caPath, hostname string) (*VerificationResult, error) {
 	} else if cert.NotAfter.Before(now) {
 		result.IsValid = false
 		result.Errors = append(result.Errors, "Certificate has expired")
+	} else if opts.ExpiresIn > 0 && cert.NotAfter.Before(now.Add(opts.ExpiresIn)) {
+		result.IsValid = false
+		result.Errors = append(result.Errors,
+			fmt.Sprintf("Certificate expires in %d days (within the %d-day threshold)",
+				cert.DaysUntilExpiry, int(opts.ExpiresIn.Hours()/24)))
 	}
 
     // Check hostname if provided
-    if hostname != "" {
-        if err := cert.VerifyHostname(hostname); err != nil {
+    if opts.Hostname != "" {
+        if err := cert.VerifyHostname(opts.Hostname); err != nil {
             result.IsValid = false
             result.Errors = append(result.Errors, fmt.Sprintf("Hostname verification failed: %v", err))
         }
     }
 
+	// Check that the private key matches the certificate if provided
+	if opts.KeyPath != "" {
+		keyData, err := os.ReadFile(opts.KeyPath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read key file: %w", err)
+		}
+		key, err := parsePrivateKey(keyData)
+		if err != nil {
+			return nil, err
+		}
+		result.KeyChecked = true
+		result.KeyMatches = publicKeysEqual(cert.PublicKey, key.Public())
+		if !result.KeyMatches {
+			result.IsValid = false
+			result.Errors = append(result.Errors, "Private key does not match certificate")
+		}
+	}
+
     // CA chain verification when a CA bundle/path is provided
-    if caPath != "" {
-        caData, err := os.ReadFile(caPath)
+    if opts.CAPath != "" {
+        caData, err := os.ReadFile(opts.CAPath)
         if err != nil {
             return nil, fmt.Errorf("failed to read CA file: %w", err)
         }
@@ -377,12 +459,12 @@ func Verify(certPath, caPath, hostname string) (*VerificationResult, error) {
             }
         }
 
-        opts := x509.VerifyOptions{Roots: roots}
-        if hostname != "" {
-            opts.DNSName = hostname
+        verifyOpts := x509.VerifyOptions{Roots: roots}
+        if opts.Hostname != "" {
+            verifyOpts.DNSName = opts.Hostname
         }
 
-        if _, err := cert.Certificate.Verify(opts); err != nil {
+        if _, err := cert.Certificate.Verify(verifyOpts); err != nil {
             result.IsValid = false
             result.Errors = append(result.Errors, fmt.Sprintf("Chain verification failed: %v", err))
         }
@@ -391,12 +473,75 @@ func Verify(certPath, caPath, hostname string) (*VerificationResult, error) {
     return result, nil
 }
 
+// parsePrivateKey parses a PEM- or DER-encoded private key in PKCS#8,
+// PKCS#1 (RSA), or SEC1 (EC) format.
+func parsePrivateKey(data []byte) (crypto.Signer, error) {
+	der := data
+	if block, _ := pem.Decode(data); block != nil {
+		der = block.Bytes
+	}
+
+	if key, err := x509.ParsePKCS8PrivateKey(der); err == nil {
+		if signer, ok := key.(crypto.Signer); ok {
+			return signer, nil
+		}
+		return nil, fmt.Errorf("unsupported private key type %T", key)
+	}
+	if key, err := x509.ParsePKCS1PrivateKey(der); err == nil {
+		return key, nil
+	}
+	if key, err := x509.ParseECPrivateKey(der); err == nil {
+		return key, nil
+	}
+	return nil, fmt.Errorf("failed to parse private key (tried PKCS#8, PKCS#1, and EC formats)")
+}
+
+// publicKeysEqual reports whether two public keys are the same key
+func publicKeysEqual(a, b crypto.PublicKey) bool {
+	key, ok := a.(interface{ Equal(crypto.PublicKey) bool })
+	if !ok {
+		return false
+	}
+	return key.Equal(b)
+}
+
 // parseCertificate tries to parse certificate data as PEM or DER
 func parseCertificate(data []byte) (*x509.Certificate, string, error) {
-	// Try PEM first
-	if block, _ := pem.Decode(data); block != nil {
+	certs, format, err := parseCertificates(data)
+	if err != nil {
+		return nil, format, err
+	}
+	return certs[0], format, nil
+}
+
+// parseCertificates parses every certificate in the data as PEM, falling
+// back to a single DER certificate. It returns at least one certificate
+// unless an error occurs.
+func parseCertificates(data []byte) ([]*x509.Certificate, string, error) {
+	// Try PEM first: collect every CERTIFICATE block
+	var certs []*x509.Certificate
+	sawPEM := false
+	for rest := data; ; {
+		var block *pem.Block
+		block, rest = pem.Decode(rest)
+		if block == nil {
+			break
+		}
+		sawPEM = true
+		if block.Type != "CERTIFICATE" {
+			continue
+		}
 		cert, err := x509.ParseCertificate(block.Bytes)
-		return cert, FormatPEM, err
+		if err != nil {
+			return nil, FormatPEM, err
+		}
+		certs = append(certs, cert)
+	}
+	if len(certs) > 0 {
+		return certs, FormatPEM, nil
+	}
+	if sawPEM {
+		return nil, FormatPEM, fmt.Errorf("no CERTIFICATE blocks found in PEM data")
 	}
 
 	// Try DER
@@ -405,7 +550,7 @@ func parseCertificate(data []byte) (*x509.Certificate, string, error) {
 		return nil, "", fmt.Errorf("failed to parse as PEM or DER: %w", err)
 	}
 
-	return cert, FormatDER, nil
+	return []*x509.Certificate{cert}, FormatDER, nil
 }
 
 // getPublicKeyAlgorithm returns the algorithm name for a public key
@@ -816,6 +961,8 @@ type VerificationResult struct {
 	IsValid     bool
 	Errors      []string
 	Warnings    []string
+	KeyChecked  bool // whether a private key was checked against the certificate
+	KeyMatches  bool // whether the checked private key matches the certificate
 }
 
 // CSROptions contains options for CSR generation

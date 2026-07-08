@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **SHA-256 and SHA-1 fingerprints** in `cert inspect` output and JSON (`fingerprint_sha256`, `fingerprint_sha1`)
+- **`--key` flag for `cert verify`** to check that a private key matches a certificate (PKCS#8, PKCS#1, and EC keys supported); JSON output includes `key_matches`
+- **`--expires-in` flag for `cert verify`** to fail (exit 1) when a certificate expires within a window (e.g. `30d`, `720h`) - useful for CI and cron monitoring
+- **Certificate bundle support** in `cert inspect`: files with multiple certificates (e.g. `fullchain.pem`) are no longer silently truncated to the first certificate; use `--chain` to display all of them
+- **stdin support** in `cert inspect`: `cert inspect -` reads a certificate from stdin (e.g. piped from `openssl s_client`)
 - `--json` output support for the `ca`, `csr`, `sign`, and `convert` commands
   - Success output uses the standard operation result format (`success`, `message`, `files`)
   - Errors are emitted as JSON payloads when `--json` is set

@@ -167,6 +167,8 @@ func DisplayCertificate(cert *cert.Certificate, showFull bool) {
 		{"Status", formatStatus(cert)},
 		{"Public Key", formatPublicKey(cert.PublicKey)},
 		{"Signature Algorithm", cert.SignatureAlgorithm.String()},
+		{"SHA-256 Fingerprint", wrapFingerprint(cert.FingerprintSHA256())},
+		{"SHA-1 Fingerprint", wrapFingerprint(cert.FingerprintSHA1())},
 	}
 
 	// Add TLS connection info if available (URL inspection only)
@@ -307,6 +309,15 @@ func DisplayVerificationResult(result *cert.VerificationResult) {
 		checks = append(checks, []string{checkmark2, "Date validity", getSuccessStyle().Render("PASS")})
 	}
 
+	// Private key match check
+	if result.KeyChecked {
+		if result.KeyMatches {
+			checks = append(checks, []string{checkmark2, "Private key match", getSuccessStyle().Render("PASS")})
+		} else {
+			checks = append(checks, []string{crossMark2, "Private key match", getErrorStyle().Render("FAIL")})
+		}
+	}
+
 	if len(checks) > 0 {
 		fmt.Println(getHeaderStyle().Render("Validation Checks:"))
 		for _, check := range checks {
@@ -410,6 +421,36 @@ func formatPublicKey(pubKey interface{}) string {
 	default:
 		return "Unknown"
 	}
+}
+
+// wrapFingerprint wraps a colon-separated fingerprint on byte boundaries
+// so it fits the panel, indenting continuation lines to the value column
+// (same 22-space alignment as formatSANs).
+func wrapFingerprint(fp string) string {
+	width, _, err := term.GetSize(0)
+	if err != nil || width <= 0 {
+		width = 80
+	}
+
+	available := width - 45
+	if available < 24 {
+		available = 24
+	}
+	if len(fp) <= available {
+		return fp
+	}
+
+	// Each byte occupies 3 characters ("AB:"); break between bytes
+	perLine := (available / 3) * 3
+	var lines []string
+	for start := 0; start < len(fp); start += perLine {
+		end := start + perLine
+		if end > len(fp) {
+			end = len(fp)
+		}
+		lines = append(lines, strings.TrimSuffix(fp[start:end], ":"))
+	}
+	return strings.Join(lines, "\n"+strings.Repeat(" ", 22))
 }
 
 // formatSANs formats SANs with word wrapping based on terminal width

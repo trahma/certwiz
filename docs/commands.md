@@ -14,12 +14,12 @@ These options work with all commands:
 
 ## inspect
 
-Inspect a certificate from a file or URL.
+Inspect a certificate from a file, URL, or stdin.
 
 ### Synopsis
 
 ```bash
-cert inspect [file|url] [flags]
+cert inspect [file|url|-] [flags]
 ```
 
 ### Options
@@ -27,7 +27,7 @@ cert inspect [file|url] [flags]
 | Flag | Short | Description | Default |
 |------|-------|-------------|---------|
 | `--full` | | Show full certificate details including all extensions | `false` |
-| `--chain` | | Show certificate chain (for URLs only) | `false` |
+| `--chain` | | Show certificate chain (URLs and multi-certificate files) | `false` |
 | `--port` | `-p` | Port for remote inspection | `443` |
 | `--connect` | | Connect to a different host while validating cert for target | |
 | `--timeout` | | Network timeout for remote inspection (e.g., `5s`) | `5s` |
@@ -37,7 +37,7 @@ Note: inspect uses a 5s network connect timeout by default to avoid hangs.
 
 ### Arguments
 
-- `target` - Certificate file path or URL/domain name (required)
+- `target` - Certificate file path, URL/domain name, or `-` for stdin (required)
 
 ### Examples
 
@@ -45,6 +45,12 @@ Note: inspect uses a 5s network connect timeout by default to avoid hangs.
 # Inspect local certificate file
 cert inspect server.crt
 cert inspect /path/to/certificate.pem
+
+# Inspect a bundle (fullchain.pem) - use --chain to see all certificates
+cert inspect fullchain.pem --chain
+
+# Read from stdin
+openssl s_client -connect example.com:443 </dev/null | cert inspect -
 
 # Inspect remote certificate
 cert inspect google.com
@@ -104,6 +110,7 @@ The inspect command shows:
 - **Status**: Current validity status with days remaining
 - **Public Key**: Key type and size
 - **Signature Algorithm**: Algorithm used to sign the certificate
+- **SHA-256 / SHA-1 Fingerprint**: Certificate fingerprints for comparison
 - **SANs**: All Subject Alternative Names
 
 With `--full`:
@@ -235,6 +242,8 @@ cert verify <certificate> [flags]
 |------|-------|-------------|---------|
 | `--host` | | Hostname to verify against | |
 | `--ca` | | CA certificate (PEM or DER) for chain verification | |
+| `--key` | | Private key file to check against the certificate | |
+| `--expires-in` | | Fail if the certificate expires within this window (e.g., `30d`, `720h`) | |
 
 ### Arguments
 
@@ -251,6 +260,12 @@ cert verify server.crt --host example.com
 
 # Verify against CA
 cert verify server.crt --ca ca-bundle.crt
+
+# Check that a private key matches the certificate
+cert verify server.crt --key server.key
+
+# Fail (exit 1) if the certificate expires within 30 days - useful in CI/cron
+cert verify server.crt --expires-in 30d
 
 # Complete verification
 cert verify server.crt \
@@ -276,6 +291,14 @@ The verify command performs:
 - Certificate chain validation
 - Signature verification
 - Trust path to CA
+
+**With --key:**
+- Private key matches the certificate's public key
+- Supports PKCS#8, PKCS#1 (RSA), and SEC1 (EC) keys, PEM or DER encoded
+
+**With --expires-in:**
+- Fails verification if the certificate expires within the given window
+- Accepts days (`30d` or `30`) or any Go duration (`720h`, `24h30m`)
 
 ### Exit Codes
 

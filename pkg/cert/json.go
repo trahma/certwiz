@@ -23,6 +23,8 @@ type JSONCertificate struct {
 	SignatureAlgorithm string            `json:"signature_algorithm"`
 	PublicKeyAlgorithm string            `json:"public_key_algorithm"`
 	PublicKeySize      int               `json:"public_key_size"`
+	FingerprintSHA256  string            `json:"fingerprint_sha256"`
+	FingerprintSHA1    string            `json:"fingerprint_sha1"`
 	DNSNames           []string          `json:"dns_names,omitempty"`
 	IPAddresses        []string          `json:"ip_addresses,omitempty"`
 	EmailAddresses     []string          `json:"email_addresses,omitempty"`
@@ -75,6 +77,7 @@ type JSONVerificationResult struct {
 	IsValid     bool            `json:"is_valid"`
 	Errors      []string        `json:"errors,omitempty"`
 	Warnings    []string        `json:"warnings,omitempty"`
+	KeyMatches  *bool           `json:"key_matches,omitempty"`
 	Certificate JSONCertificate `json:"certificate"`
 }
 
@@ -118,6 +121,8 @@ func (c *Certificate) ToJSON() JSONCertificate {
 		SignatureAlgorithm: c.SignatureAlgorithm.String(),
 		PublicKeyAlgorithm: getPublicKeyAlgorithm(c.PublicKey),
 		PublicKeySize:      getPublicKeySize(c.PublicKey),
+		FingerprintSHA256:  c.FingerprintSHA256(),
+		FingerprintSHA1:    c.FingerprintSHA1(),
 		DNSNames:           c.DNSNames,
 		Source:             c.Source,
 		Format:             c.Format,
@@ -181,12 +186,17 @@ func (info *CSRInfo) ToJSON() JSONCSRInfo {
 
 // ToJSON converts VerificationResult to JSONVerificationResult
 func (vr *VerificationResult) ToJSON() JSONVerificationResult {
-	return JSONVerificationResult{
+	result := JSONVerificationResult{
 		IsValid:     vr.IsValid,
 		Errors:      vr.Errors,
 		Warnings:    vr.Warnings,
 		Certificate: vr.Certificate.ToJSON(),
 	}
+	if vr.KeyChecked {
+		matches := vr.KeyMatches
+		result.KeyMatches = &matches
+	}
+	return result
 }
 
 // ToJSON converts TLSResult to JSONTLSResult
