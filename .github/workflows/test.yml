@@ -75,7 +75,9 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        go-version: ['1.21']
+        # 1.22+ required: earlier toolchains omit LC_UUID from darwin
+        # binaries, which dyld on macOS 15.4+ runners refuses to load
+        go-version: ['1.23']
     
     steps:
     - name: Checkout code
