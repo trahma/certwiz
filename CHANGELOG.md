@@ -7,8 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-09-09
+
 ### Fixed
 - `cert inspect` reports a missing file for path-like targets (a directory separator, a leading `.` or `~`, or a certificate extension such as `.pem`) instead of trying to connect to them as hostnames
+
+### Changed
+- CI workflows use Node 24 versions of every GitHub Action; GoReleaser is pinned to v2
 
 ## [0.4.0] - 2026-09-09
 
@@ -287,6 +292,7 @@ All features from v0.1.6 are included in this release.
 - Binary named `cert` for ease of use
 - Project name remains `certwiz`
 
+[0.4.1]: https://github.com/trahma/certwiz/releases/tag/v0.4.1
 [0.4.0]: https://github.com/trahma/certwiz/releases/tag/v0.4.0
 [0.3.0]: https://github.com/trahma/certwiz/releases/tag/v0.3.0
 [0.2.4]: https://github.com/trahma/certwiz/releases/tag/v0.2.4
