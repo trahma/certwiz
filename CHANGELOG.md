@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- `cert inspect` reports a missing file for path-like targets (a directory separator, a leading `.` or `~`, or a certificate extension such as `.pem`) instead of trying to connect to them as hostnames
+
 ## [0.4.0] - 2026-09-09
 
 ### Added

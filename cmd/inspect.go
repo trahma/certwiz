@@ -5,6 +5,7 @@ import (
 	"io"
 	"net"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -29,11 +30,14 @@ var inspectCmd = &cobra.Command{
 	Short: "Inspect a certificate from a file or URL",
 	Long: `Inspect a certificate from a file, URL, or stdin and display its information.
 
-If the argument is a valid file path, it will read and parse the certificate file.
+If the argument is an existing file, it will read and parse the certificate file.
 Files containing multiple certificates (e.g. fullchain.pem) are supported; use
 --chain to display all of them. Use "-" to read from stdin.
 If the argument looks like a URL or domain name, it will connect to the remote
-server and retrieve its certificate.
+server and retrieve its certificate. Arguments that look like file paths (a
+directory separator, a leading "." or "~", or a certificate extension such as
+.pem or .crt) are always treated as files, so a typo in a path is reported as
+a missing file rather than a failed connection.
 
 Examples:
   cert inspect cert.pem
@@ -80,6 +84,15 @@ Examples:
 
 			displayLocalCertificates(certs)
 			return nil
+		} else if looksLikeFilePath(target) {
+			// Do not fall through to a hostname lookup for an obvious path typo
+			if os.IsNotExist(err) {
+				err = fmt.Errorf("certificate file does not exist: %s", target)
+			} else {
+				err = fmt.Errorf("cannot access certificate file: %w", err)
+			}
+			reportError(cmd, err)
+			return err
 		}
 
 		// Otherwise treat the target as a URL/hostname
@@ -130,6 +143,55 @@ Examples:
 		}
 		return nil
 	},
+}
+
+// certFileExtensions lists file extensions that identify a target as a
+// certificate or key file rather than a hostname.
+var certFileExtensions = map[string]bool{
+	".pem": true, ".crt": true, ".cer": true, ".der": true, ".key": true,
+	".p7b": true, ".p7c": true, ".pfx": true, ".p12": true, ".csr": true,
+}
+
+// looksLikeFilePath reports whether a non-existent inspect target should be
+// treated as a file path rather than a hostname. It is true when the target:
+//   - starts with "." or "~", or a Windows drive prefix such as "C:";
+//   - ends with a certificate-ish extension (.pem, .crt, .key, ...); or
+//   - contains a "/" or "\" whose first segment is not a hostname. A first
+//     segment containing a dot or a colon (e.g. "example.com/path" or
+//     "host:8443/x") is taken to be a host, since URLs without a scheme are
+//     accepted and get "https://" prepended.
+//
+// Anything containing "://" is a URL and never a file path.
+func looksLikeFilePath(target string) bool {
+	if target == "" || strings.Contains(target, "://") {
+		return false
+	}
+
+	if strings.HasPrefix(target, ".") || strings.HasPrefix(target, "~") {
+		return true
+	}
+
+	// Windows drive prefix: a letter, a colon, then a separator
+	if len(target) >= 3 && target[1] == ':' && (target[2] == '\\' || target[2] == '/') {
+		c := target[0]
+		if (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') {
+			return true
+		}
+	}
+
+	if certFileExtensions[strings.ToLower(filepath.Ext(target))] {
+		return true
+	}
+
+	if i := strings.IndexAny(target, "/\\"); i >= 0 {
+		first := target[:i]
+		if first == "" {
+			return true // absolute path
+		}
+		return !strings.ContainsAny(first, ".:")
+	}
+
+	return false
 }
 
 // chainSummaries converts chain certificates to their JSON summary form
