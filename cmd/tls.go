@@ -24,10 +24,13 @@ var tlsCmd = &cobra.Command{
 
 This command attempts to connect to the specified hostname using each
 TLS version (1.0, 1.1, 1.2, and 1.3) and reports which versions are
-supported by the server.
+supported by the server. Versions are probed concurrently; a version that
+fails while others succeed is retried once before being reported as
+unsupported.
 
 Examples:
   cert tls google.com
+  cert tls https://example.com
   cert tls example.com:443
   cert tls 192.168.1.1 --port 443
   cert tls localhost --timeout 2s`,

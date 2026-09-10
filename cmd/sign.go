@@ -31,13 +31,13 @@ producing a signed certificate that can be used for TLS/SSL or other purposes.
 Examples:
   # Sign a CSR with a CA
   cert sign --csr server.csr --ca ca.crt --ca-key ca.key
-  
+
   # Sign with custom validity period (1 year)
   cert sign --csr server.csr --ca ca.crt --ca-key ca.key --days 365
-  
+
   # Sign and output to specific directory
   cert sign --csr server.csr --ca ca.crt --ca-key ca.key --output /etc/ssl/certs/
-  
+
   # Sign with additional SANs (overrides CSR SANs)
   cert sign --csr server.csr --ca ca.crt --ca-key ca.key --san server.local --san *.server.local`,
 	RunE: func(cmd *cobra.Command, args []string) error {
@@ -63,11 +63,6 @@ Examples:
 			CAKey:   signCAKey,
 			Days:    signDays,
 			SANs:    signSANs,
-		}
-
-		// Set output path
-		if signOutput == "" {
-			signOutput = "."
 		}
 
 		// Extract base name from CSR for output filename
@@ -128,8 +123,8 @@ func init() {
 	signCmd.Flags().StringVar(&signCA, "ca", "", "Path to the CA certificate (required)")
 	signCmd.Flags().StringVar(&signCAKey, "ca-key", "", "Path to the CA private key (required)")
 	signCmd.Flags().IntVarP(&signDays, "days", "d", 365, "Validity period in days")
-	signCmd.Flags().StringVarP(&signOutput, "output", "o", "", "Output directory for signed certificate")
-	signCmd.Flags().StringSliceVar(&signSANs, "san", []string{}, "Subject Alternative Name (overrides CSR SANs if specified)")
+	signCmd.Flags().StringVarP(&signOutput, "output", "o", ".", "Output directory for signed certificate")
+	signCmd.Flags().StringSliceVar(&signSANs, "san", []string{}, "Subject Alternative Name: DNS name, IP:<address>, email:<address>, or uri:<uri> (repeatable; overrides the CSR SANs if specified)")
 
 	rootCmd.AddCommand(signCmd)
 }

@@ -21,7 +21,8 @@ var convertCmd = &cobra.Command{
 	Long: `Convert a certificate file between PEM and DER formats.
 
 The input format is automatically detected. The output format is specified
-using the --format flag.
+using the --format flag. PEM output keeps every certificate in a bundle; DER
+can hold only one, so converting a bundle to DER is an error.
 
 Examples:
   cert convert cert.pem cert.der --format der

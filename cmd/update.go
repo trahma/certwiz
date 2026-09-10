@@ -30,7 +30,9 @@ var updateCmd = &cobra.Command{
 This command will:
 1. Download the installer script
 2. Run it, which checks the latest release against your current version
-3. If an update is available, the installer upgrades cert in place`,
+3. If an update is available, the installer upgrades cert in place
+
+Auto-update is not supported on Windows; download a release from GitHub instead.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if runtime.GOOS == "windows" {
 			fmt.Println("Please download the latest version from:")

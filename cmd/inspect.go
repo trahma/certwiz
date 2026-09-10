@@ -28,16 +28,13 @@ var (
 var inspectCmd = &cobra.Command{
 	Use:   "inspect [file|url]",
 	Short: "Inspect a certificate from a file or URL",
-	Long: `Inspect a certificate from a file, URL, or stdin and display its information.
+	Long: `Inspect a certificate from a file, URL, or stdin.
 
-If the argument is an existing file, it will read and parse the certificate file.
-Files containing multiple certificates (e.g. fullchain.pem) are supported; use
---chain to display all of them. Use "-" to read from stdin.
-If the argument looks like a URL or domain name, it will connect to the remote
-server and retrieve its certificate. Arguments that look like file paths (a
-directory separator, a leading "." or "~", or a certificate extension such as
-.pem or .crt) are always treated as files, so a typo in a path is reported as
-a missing file rather than a failed connection.
+Files may be PEM or DER and may contain several certificates (e.g. fullchain.pem);
+use --chain to show all of them. Use "-" to read from stdin. Anything that is not
+an existing file is treated as a hostname or URL, except arguments that look like
+paths (a directory separator, a leading "." or "~", or a certificate extension
+such as .pem or .crt), which report a missing file instead.
 
 Examples:
   cert inspect cert.pem

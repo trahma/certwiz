@@ -82,7 +82,7 @@ func init() {
 	generateCmd.Flags().StringVar(&generateCN, "cn", "", "Common Name for the certificate (required)")
 	generateCmd.Flags().IntVar(&generateDays, "days", 365, "Validity period in days")
 	generateCmd.Flags().IntVar(&generateKeySize, "key-size", 2048, "RSA key size in bits")
-	generateCmd.Flags().StringSliceVar(&generateSANs, "san", []string{}, "Subject Alternative Name (can be used multiple times)")
+	generateCmd.Flags().StringSliceVar(&generateSANs, "san", []string{}, "Subject Alternative Name: a DNS name or IP:<address> (repeatable)")
 	generateCmd.Flags().StringVar(&generateOutput, "output", ".", "Output directory")
 
 	_ = generateCmd.MarkFlagRequired("cn")

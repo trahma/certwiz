@@ -28,7 +28,11 @@ var rootCmd = &cobra.Command{
   cert inspect google.com --chain
   cert generate --cn example.com
   cert convert cert.pem cert.der --format der
-  cert verify cert.pem --host example.com`,
+  cert verify cert.pem --host example.com
+  cert csr --cn server.example.com
+  cert ca --cn "My Root CA"
+  cert sign --csr server.csr --ca ca.crt --ca-key ca.key
+  cert tls example.com`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if versionFlag {
 			fmt.Printf("cert version %s\n", version)

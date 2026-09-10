@@ -30,13 +30,13 @@ This is useful for internal PKI, development environments, or testing.
 Examples:
   # Create a basic CA certificate
   cert ca --cn "My Company CA"
-  
+
   # Create a CA with organization details
   cert ca --cn "Example Corp Root CA" --org "Example Corporation" --country US
-  
+
   # Create a CA with custom validity period (10 years)
   cert ca --cn "Internal CA" --days 3650
-  
+
   # Create a CA with larger key size for extra security
   cert ca --cn "Secure CA" --key-size 4096 --output /etc/pki/`,
 	RunE: func(cmd *cobra.Command, args []string) error {
@@ -53,11 +53,6 @@ Examples:
 			Country:      caCountry,
 			Days:         caDays,
 			KeySize:      caKeySize,
-		}
-
-		// Set output path
-		if caOutput == "" {
-			caOutput = "."
 		}
 
 		// Generate CA certificate
@@ -119,9 +114,9 @@ func init() {
 	caCmd.Flags().StringVar(&caCN, "cn", "", "Common Name for the CA (required)")
 	caCmd.Flags().StringVar(&caOrg, "org", "", "Organization name")
 	caCmd.Flags().StringVar(&caCountry, "country", "", "Country (2-letter code)")
-	caCmd.Flags().IntVarP(&caDays, "days", "d", 3650, "Validity period in days (default 10 years)")
+	caCmd.Flags().IntVarP(&caDays, "days", "d", 3650, "Validity period in days")
 	caCmd.Flags().IntVarP(&caKeySize, "key-size", "k", 4096, "RSA key size in bits")
-	caCmd.Flags().StringVarP(&caOutput, "output", "o", "", "Output directory for CA files")
+	caCmd.Flags().StringVarP(&caOutput, "output", "o", ".", "Output directory for CA files")
 
 	rootCmd.AddCommand(caCmd)
 }

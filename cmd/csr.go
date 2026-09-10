@@ -36,13 +36,13 @@ It contains your public key and identity information.
 Examples:
   # Basic CSR generation
   cert csr --cn example.com
-  
+
   # CSR with organization details
   cert csr --cn example.com --org "Example Inc" --country US --state CA
-  
+
   # CSR with Subject Alternative Names
   cert csr --cn example.com --san example.com --san www.example.com --san api.example.com
-  
+
   # CSR with custom output directory and key size
   cert csr --cn secure.example.com --key-size 4096 --output /etc/ssl/`,
 	RunE: func(cmd *cobra.Command, args []string) error {
@@ -63,11 +63,6 @@ Examples:
 			EmailAddress:       csrEmail,
 			SANs:               csrSANs,
 			KeySize:            csrKeySize,
-		}
-
-		// Set output path
-		if csrOutput == "" {
-			csrOutput = "."
 		}
 
 		// Generate CSR
@@ -125,9 +120,9 @@ func init() {
 	csrCmd.Flags().StringVar(&csrState, "state", "", "State or Province")
 	csrCmd.Flags().StringVar(&csrLocality, "locality", "", "Locality or City")
 	csrCmd.Flags().StringVar(&csrEmail, "email", "", "Email Address")
-	csrCmd.Flags().StringSliceVar(&csrSANs, "san", []string{}, "Subject Alternative Name (can be used multiple times)")
+	csrCmd.Flags().StringSliceVar(&csrSANs, "san", []string{}, "Subject Alternative Name: DNS name, IP:<address>, email:<address>, or uri:<uri> (repeatable)")
 	csrCmd.Flags().IntVarP(&csrKeySize, "key-size", "k", 2048, "RSA key size in bits")
-	csrCmd.Flags().StringVarP(&csrOutput, "output", "o", "", "Output directory for CSR and key files")
+	csrCmd.Flags().StringVarP(&csrOutput, "output", "o", ".", "Output directory for CSR and key files")
 
 	rootCmd.AddCommand(csrCmd)
 }
