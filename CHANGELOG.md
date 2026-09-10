@@ -7,8 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.2] - 2026-09-09
+
 ### Changed
-- Help text clarifications: SAN prefixes, default output directory, bundle behaviour for convert, and TLS retry behaviour
+- Help text clarifications: SAN prefixes per command, the default output directory on `ca`, `csr`, and `sign`, bundle behaviour for `convert`, the concurrent probe and retry in `tls`, and the Windows limitation on `update`
+- README and docs rewritten for 0.4.x: working install commands, correct release asset names, every command documented, emojis removed
 
 ## [0.4.1] - 2026-09-09
 
@@ -295,6 +298,7 @@ All features from v0.1.6 are included in this release.
 - Binary named `cert` for ease of use
 - Project name remains `certwiz`
 
+[0.4.2]: https://github.com/trahma/certwiz/releases/tag/v0.4.2
 [0.4.1]: https://github.com/trahma/certwiz/releases/tag/v0.4.1
 [0.4.0]: https://github.com/trahma/certwiz/releases/tag/v0.4.0
 [0.3.0]: https://github.com/trahma/certwiz/releases/tag/v0.3.0
