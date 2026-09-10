@@ -15,7 +15,7 @@ func TestJSONOutput(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tmpDir)
+	defer func() { _ = os.RemoveAll(tmpDir) }()
 
 	// Test generate command with JSON output
 	t.Run("GenerateJSON", func(t *testing.T) {
@@ -31,11 +31,11 @@ func TestJSONOutput(t *testing.T) {
 		r, w, _ := os.Pipe()
 		os.Stdout = w
 
-        // Run the command
-        _ = generateCmd.RunE(generateCmd, []string{})
+		// Run the command
+		_ = generateCmd.RunE(generateCmd, []string{})
 
 		// Restore stdout and read output
-		w.Close()
+		_ = w.Close()
 		os.Stdout = old
 		var buf bytes.Buffer
 		_, _ = io.Copy(&buf, r)
@@ -69,7 +69,7 @@ func TestJSONOutput(t *testing.T) {
 		generateDays = 365
 		jsonOutput = false
 
-			_ = generateCmd.RunE(generateCmd, []string{})
+		_ = generateCmd.RunE(generateCmd, []string{})
 
 		// Now inspect it with JSON output
 		certPath := filepath.Join(tmpDir, "inspect-test.local.crt")
@@ -80,11 +80,11 @@ func TestJSONOutput(t *testing.T) {
 		r, w, _ := os.Pipe()
 		os.Stdout = w
 
-        // Run inspect command
-        _ = inspectCmd.RunE(inspectCmd, []string{certPath})
+		// Run inspect command
+		_ = inspectCmd.RunE(inspectCmd, []string{certPath})
 
 		// Restore stdout and read output
-		w.Close()
+		_ = w.Close()
 		os.Stdout = old
 		var buf bytes.Buffer
 		_, _ = io.Copy(&buf, r)
@@ -134,11 +134,11 @@ func TestJSONOutput(t *testing.T) {
 		r, w, _ := os.Pipe()
 		os.Stdout = w
 
-        // Run verify command
-        _ = verifyCmd.RunE(verifyCmd, []string{certPath})
+		// Run verify command
+		_ = verifyCmd.RunE(verifyCmd, []string{certPath})
 
 		// Restore stdout and read output
-		w.Close()
+		_ = w.Close()
 		os.Stdout = old
 		var buf bytes.Buffer
 		_, _ = io.Copy(&buf, r)
@@ -181,7 +181,7 @@ func TestJSONOutput(t *testing.T) {
 
 		runErr := run()
 
-		w.Close()
+		_ = w.Close()
 		os.Stdout = old
 		var buf bytes.Buffer
 		_, _ = io.Copy(&buf, r)

@@ -9,7 +9,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var version = "0.3.0"
+var version = "0.4.0"
 
 var (
 	versionFlag bool
@@ -21,33 +21,41 @@ var (
 var AppConfig *config.Config
 
 var rootCmd = &cobra.Command{
-    Use:   "cert",
-    Short: "A user-friendly CLI tool for certificate management",
-    Long:  `cert (from certwiz) is a user-friendly CLI tool for certificate management. Similar to HTTPie but for certificates.`,
-    Example: `  cert inspect cert.pem
+	Use:   "cert",
+	Short: "A user-friendly CLI tool for certificate management",
+	Long:  `cert (from certwiz) is a user-friendly CLI tool for certificate management. Similar to HTTPie but for certificates.`,
+	Example: `  cert inspect cert.pem
   cert inspect google.com --chain
   cert generate --cn example.com
   cert convert cert.pem cert.der --format der
   cert verify cert.pem --host example.com`,
-    RunE: func(cmd *cobra.Command, args []string) error {
-        if versionFlag {
-            fmt.Printf("cert version %s\n", version)
-            return nil
-        }
-        // Defer to Cobra's help when no subcommand provided
-        return cmd.Help()
-    },
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if versionFlag {
+			fmt.Printf("cert version %s\n", version)
+			return nil
+		}
+		// Defer to Cobra's help when no subcommand provided
+		return cmd.Help()
+	},
 }
 
-// Execute adds all child commands to the root command and sets flags appropriately.
+// Execute runs the root command. Cobra's own error printing is disabled so
+// each failure is reported exactly once: commands print their own errors via
+// reportError, and anything else (flag or argument errors, verification
+// failures) is printed here on stderr.
 func Execute() error {
-	return rootCmd.Execute()
+	errorReported = false
+	err := rootCmd.Execute()
+	if err != nil && !errorReported {
+		_, _ = fmt.Fprintln(rootCmd.ErrOrStderr(), "Error:", err)
+	}
+	return err
 }
 
 func init() {
-	// Prefer Cobra-managed help/errors
+	// Usage and errors are printed by Execute and reportError, not by cobra
 	rootCmd.SilenceUsage = true
-	rootCmd.SilenceErrors = false
+	rootCmd.SilenceErrors = true
 
 	// Add global flags
 	rootCmd.PersistentFlags().BoolVar(&jsonOutput, "json", false, "Output in JSON format")

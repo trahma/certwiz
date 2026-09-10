@@ -14,7 +14,7 @@ func TestCACommand(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tmpDir)
+	defer func() { _ = os.RemoveAll(tmpDir) }()
 
 	// Test basic CA generation
 	t.Run("BasicCA", func(t *testing.T) {

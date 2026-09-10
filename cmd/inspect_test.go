@@ -70,6 +70,7 @@ func TestInspectCommand(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Create new root command for each test to reset state
 			cmd := rootCmd
+			resetCommandFlags(t, cmd)
 			cmd.SetArgs(tt.args)
 
 			// Capture output

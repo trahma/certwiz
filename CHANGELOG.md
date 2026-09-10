@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-09-09
+
+### Added
+- `cert convert` handles certificate bundles: PEM output keeps every certificate, DER output reports a clear error when the input holds more than one
+- `cert sign` accepts EC CA keys and DER-encoded CA certificates
+- `cert csr` reports ECDSA public keys correctly
+- Email and URI SANs are shown in the terminal view, matching the JSON output
+- Extensive test coverage (about 95% of statements), including in-process TLS servers for remote inspection and `cert tls`
+
+### Changed
+- `cert tls` probes all TLS versions concurrently, with a sequential retry for versions that fail while the host is reachable; a down host now fails in one timeout instead of four
+- Errors are printed to stderr exactly once; JSON error payloads stay on stdout
+- `--timeout` on `inspect` and `tls` is a proper duration flag (e.g. `2s`, `500ms`)
+- `cert update` downloads the installer to a private temp file with a 30s HTTP timeout and removes it after running
+- Terminal key-usage labels now use the same wording as the JSON output (e.g. "Server Authentication")
+- Terminal width is read from stdout, so piped stdin no longer forces the 80-column fallback
+- Non-JSON errors from `ca`, `csr`, and `sign` are now shown in the terminal (previously only cobra's line was printed)
+
+### Fixed
+- Private keys are created with 0600 permissions directly instead of 0644 then chmod; `cert csr` keys were previously left at 0644
+- Wrapped fingerprint and SAN lines were misaligned by one column
+- `cert sign` reported the wrong parse error when a CA key was not PKCS#8
+- Files whose name starts with "http" were treated as URLs in the inspect title
+
+### Removed
+- Stale `go.mod.ci`, `test-ci.sh`, and the Makefile `test-ci` target
+
 ## [0.3.0] - 2026-07-07
 
 ### Added
@@ -257,6 +284,8 @@ All features from v0.1.6 are included in this release.
 - Binary named `cert` for ease of use
 - Project name remains `certwiz`
 
+[0.4.0]: https://github.com/trahma/certwiz/releases/tag/v0.4.0
+[0.3.0]: https://github.com/trahma/certwiz/releases/tag/v0.3.0
 [0.2.4]: https://github.com/trahma/certwiz/releases/tag/v0.2.4
 [0.2.3]: https://github.com/trahma/certwiz/releases/tag/v0.2.3
 [0.2.2]: https://github.com/trahma/certwiz/releases/tag/v0.2.2

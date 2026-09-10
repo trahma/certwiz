@@ -1,13 +1,13 @@
 package cmd
 
 import (
-    "fmt"
-    "path/filepath"
+	"fmt"
+	"path/filepath"
 
-    "certwiz/pkg/cert"
-    "certwiz/pkg/ui"
+	"certwiz/pkg/cert"
+	"certwiz/pkg/ui"
 
-    "github.com/spf13/cobra"
+	"github.com/spf13/cobra"
 )
 
 var (
@@ -19,8 +19,8 @@ var (
 )
 
 var generateCmd = &cobra.Command{
-    Use:   "generate",
-    Short: "Generate a self-signed certificate",
+	Use:   "generate",
+	Short: "Generate a self-signed certificate",
 	Long: `Generate a self-signed certificate with the specified parameters.
 
 The certificate and private key will be saved in the output directory
@@ -31,16 +31,12 @@ Examples:
   cert generate --cn myserver --days 730 --key-size 4096
   cert generate --cn example.com --san *.example.com --san www.example.com
   cert generate --cn server --san IP:192.168.1.100 --san localhost`,
-    RunE: func(cmd *cobra.Command, args []string) error {
-        if generateCN == "" {
-            err := fmt.Errorf("missing required flag: --cn")
-            if jsonOutput {
-                printJSONError(err)
-            } else {
-                ui.ShowError("Common Name (--cn) is required")
-            }
-            return err
-        }
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if generateCN == "" {
+			err := fmt.Errorf("common name (--cn) is required")
+			reportError(cmd, err)
+			return err
+		}
 
 		opts := cert.GenerateOptions{
 			CommonName: generateCN,
@@ -55,31 +51,31 @@ Examples:
 			ui.ShowInfo("Creating self-signed certificate...")
 		}
 
-        if err := cert.Generate(opts); err != nil {
-            if jsonOutput { printJSONError(err) } else { ui.ShowError(err.Error()) }
-            return err
-        }
+		if err := cert.Generate(opts); err != nil {
+			reportError(cmd, err)
+			return err
+		}
 
 		certPath := filepath.Join(generateOutput, generateCN+".crt")
 		keyPath := filepath.Join(generateOutput, generateCN+".key")
 
-        if jsonOutput {
-            printJSON(cert.JSONOperationResult{
-                Success: true,
-                Message: "Certificate generated successfully",
-                Files:   []string{certPath, keyPath},
-            })
-        } else {
-            ui.DisplayGenerationResult(certPath, keyPath)
+		if jsonOutput {
+			printJSON(cert.JSONOperationResult{
+				Success: true,
+				Message: "Certificate generated successfully",
+				Files:   []string{certPath, keyPath},
+			})
+		} else {
+			ui.DisplayGenerationResult(certPath, keyPath)
 
 			// Also display the generated certificate
 			generatedCert, err := cert.InspectFile(certPath)
 			if err == nil {
 				ui.DisplayCertificate(generatedCert, false)
 			}
-        }
-        return nil
-    },
+		}
+		return nil
+	},
 }
 
 func init() {

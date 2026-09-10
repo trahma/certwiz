@@ -30,8 +30,9 @@ certwiz/                    # Project root (name: certwiz)
 │   ├── ca.go             # cert ca
 │   ├── csr.go            # cert csr
 │   ├── sign.go           # cert sign
+│   ├── tls.go            # cert tls
 │   ├── update.go         # cert update
-│   └── helpers.go        # Shared helper functions
+│   └── helpers.go        # Shared helper functions (JSON output, error reporting)
 ├── pkg/                   # Core packages
 │   ├── cert/             # Certificate operations
 │   │   ├── cert.go      # Main certificate functions
@@ -40,6 +41,8 @@ certwiz/                    # Project root (name: certwiz)
 │   └── ui/               # Terminal UI with lipgloss
 │       └── ui.go
 ├── internal/             # Internal packages
+│   ├── config/           # YAML config loading (~/.config/certwiz/config.yaml)
+│   │   └── config.go
 │   ├── environ/          # Environment detection
 │   │   └── env.go       # CI and Unicode detection
 │   └── testutil/         # Test utilities
@@ -82,6 +85,7 @@ Commands:
 - `ca` - Create Certificate Authority certificates
 - `csr` - Generate Certificate Signing Requests
 - `sign` - Sign CSRs with a CA certificate
+- `tls` - Test which TLS versions a server supports
 - `update` - Update cert to the latest version
 - `version` - Show version information
 - `completion` - Generate shell completion scripts
@@ -359,7 +363,7 @@ These features have been successfully implemented:
 - ✅ Certificate signing requests (`cert csr` command)
 - ✅ Certificate signing with CA (`cert sign` command)
 - ✅ JSON output format (all commands support `--json` flag)
-- ✅ Network timeout configuration (`--timeout` flag)
+- ✅ Network timeout configuration (`--timeout` is a Go duration flag, e.g. `2s`, `500ms`)
 - ✅ Proxy/tunnel support (`--connect` flag)
 - ✅ Signature algorithm selection (`--sig-alg` flag for inspect)
 - ✅ Automatic update command (`cert update`)

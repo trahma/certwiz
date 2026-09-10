@@ -13,7 +13,11 @@ func TestSignCommand(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tmpDir)
+	defer func() { _ = os.RemoveAll(tmpDir) }()
+
+	// Later subtests set a SAN override; start every run without one.
+	signSANs = nil
+	t.Cleanup(func() { signSANs = nil })
 
 	// First, create a CA
 	caOptions := cert.CAOptions{

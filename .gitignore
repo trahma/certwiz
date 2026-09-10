@@ -73,3 +73,6 @@ cert-windows-*
 
 # Claude specific
 .claude/settings.local.json
+
+# Local video/promo generation experiments (not for git)
+promo/

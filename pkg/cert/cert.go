@@ -10,6 +10,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"encoding/hex"
 	"encoding/pem"
 	"fmt"
 	"math/big"
@@ -20,6 +21,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -29,6 +31,11 @@ const (
 	// Format constants
 	FormatPEM = "PEM"
 	FormatDER = "DER"
+)
+
+const (
+	certFilePerm os.FileMode = 0644
+	keyFilePerm  os.FileMode = 0600
 )
 
 // Certificate represents a parsed X.509 certificate with additional metadata
@@ -42,14 +49,33 @@ type Certificate struct {
 	CipherSuite     uint16 // Negotiated cipher suite (0 for file inspection)
 }
 
+// newCertificate wraps an x509 certificate with the expiry metadata computed once.
+func newCertificate(c *x509.Certificate, source, format string) *Certificate {
+	return &Certificate{
+		Certificate:     c,
+		Source:          source,
+		Format:          format,
+		IsExpired:       c.NotAfter.Before(time.Now()),
+		DaysUntilExpiry: int(time.Until(c.NotAfter).Hours() / 24),
+	}
+}
+
 // formatFingerprint renders a digest as colon-separated uppercase hex,
 // matching the format used by openssl and browsers.
 func formatFingerprint(sum []byte) string {
-	parts := make([]string, len(sum))
-	for i, b := range sum {
-		parts[i] = fmt.Sprintf("%02X", b)
+	if len(sum) == 0 {
+		return ""
 	}
-	return strings.Join(parts, ":")
+	h := strings.ToUpper(hex.EncodeToString(sum))
+	var b strings.Builder
+	b.Grow(len(h) + len(sum) - 1)
+	for i := 0; i < len(h); i += 2 {
+		if i > 0 {
+			b.WriteByte(':')
+		}
+		b.WriteString(h[i : i+2])
+	}
+	return b.String()
 }
 
 // FingerprintSHA256 returns the SHA-256 fingerprint of the certificate.
@@ -75,13 +101,7 @@ func InspectData(data []byte, source string) ([]*Certificate, error) {
 
 	result := make([]*Certificate, 0, len(certs))
 	for _, c := range certs {
-		result = append(result, &Certificate{
-			Certificate:     c,
-			Source:          source,
-			Format:          format,
-			IsExpired:       c.NotAfter.Before(time.Now()),
-			DaysUntilExpiry: int(time.Until(c.NotAfter).Hours() / 24),
-		})
+		result = append(result, newCertificate(c, source, format))
 	}
 	return result, nil
 }
@@ -120,21 +140,21 @@ func InspectURLWithChain(targetURL string, port int) (*Certificate, []*Certifica
 // If connectHost is empty, it connects directly to the target
 // InspectURLWithConnect uses a default timeout for the TLS connection.
 func InspectURLWithConnect(targetURL string, port int, connectHost string) (*Certificate, []*Certificate, error) {
-    return InspectURLWithConnectTimeout(targetURL, port, connectHost, defaultDialTimeout)
+	return InspectURLWithConnectTimeout(targetURL, port, connectHost, defaultDialTimeout)
 }
 
 // InspectURLWithConnectTimeout connects with a specific timeout.
 func InspectURLWithConnectTimeout(targetURL string, port int, connectHost string, timeout time.Duration) (*Certificate, []*Certificate, error) {
-    return InspectURLWithOptions(targetURL, port, connectHost, timeout, "auto")
+	return InspectURLWithOptions(targetURL, port, connectHost, timeout, "auto")
 }
 
 // InspectURLWithOptions connects with a specific timeout and signature algorithm preference.
 // sigAlg can be "auto", "ecdsa", or "rsa" to control cipher suite selection.
 func InspectURLWithOptions(targetURL string, port int, connectHost string, timeout time.Duration, sigAlg string) (*Certificate, []*Certificate, error) {
-    // Parse and normalize URL
-    if !strings.Contains(targetURL, "://") {
-        targetURL = "https://" + targetURL
-    }
+	// Parse and normalize URL
+	if !strings.Contains(targetURL, "://") {
+		targetURL = "https://" + targetURL
+	}
 
 	u, err := url.Parse(targetURL)
 	if err != nil {
@@ -144,7 +164,7 @@ func InspectURLWithOptions(targetURL string, port int, connectHost string, timeo
 	// Determine the actual host to connect to
 	var dialHost string
 	serverName := u.Hostname() // Always use the target hostname for TLS verification
-	
+
 	if connectHost != "" {
 		// Use the provided connect host
 		dialHost = net.JoinHostPort(connectHost, strconv.Itoa(port))
@@ -157,48 +177,48 @@ func InspectURLWithOptions(targetURL string, port int, connectHost string, timeo
 		}
 	}
 
-    // Configure TLS with cipher suite preferences based on signature algorithm
-    tlsConfig := &tls.Config{
-        InsecureSkipVerify: true, // We want to inspect even invalid certs
-        ServerName:         serverName, // Use the target hostname for SNI
-    }
-    
-    // Set cipher suites based on signature algorithm preference
-    switch strings.ToLower(sigAlg) {
-    case "ecdsa":
-        // Only ECDSA cipher suites - server will be forced to use ECDSA cert if available
-        tlsConfig.CipherSuites = []uint16{
-            tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
-            tls.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
-            tls.TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305,
-            tls.TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256,
-            tls.TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA,
-            tls.TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA,
-        }
-        // Ensure we don't negotiate TLS 1.3 where cipher suites don't control cert selection
-        tlsConfig.MaxVersion = tls.VersionTLS12
-    case "rsa":
-        // Only RSA cipher suites - server will be forced to use RSA cert if available
-        tlsConfig.CipherSuites = []uint16{
-            tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
-            tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
-            tls.TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305,
-            tls.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256,
-            tls.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA,
-            tls.TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA,
-            tls.TLS_RSA_WITH_AES_128_GCM_SHA256,
-            tls.TLS_RSA_WITH_AES_256_GCM_SHA384,
-        }
-        // Ensure we don't negotiate TLS 1.3 where cipher suites don't control cert selection
-        tlsConfig.MaxVersion = tls.VersionTLS12
-    default:
-        // "auto" or any other value - use default cipher suites
-        // Let Go choose the best cipher suites
-    }
-    
-    // Connect with TLS using a timeout to avoid hanging
-    dialer := &net.Dialer{Timeout: timeout}
-    conn, err := tls.DialWithDialer(dialer, "tcp", dialHost, tlsConfig)
+	// Configure TLS with cipher suite preferences based on signature algorithm
+	tlsConfig := &tls.Config{
+		InsecureSkipVerify: true,       // We want to inspect even invalid certs
+		ServerName:         serverName, // Use the target hostname for SNI
+	}
+
+	// Set cipher suites based on signature algorithm preference
+	switch strings.ToLower(sigAlg) {
+	case "ecdsa":
+		// Only ECDSA cipher suites - server will be forced to use ECDSA cert if available
+		tlsConfig.CipherSuites = []uint16{
+			tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
+			tls.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
+			tls.TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305,
+			tls.TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256,
+			tls.TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA,
+			tls.TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA,
+		}
+		// Ensure we don't negotiate TLS 1.3 where cipher suites don't control cert selection
+		tlsConfig.MaxVersion = tls.VersionTLS12
+	case "rsa":
+		// Only RSA cipher suites - server will be forced to use RSA cert if available
+		tlsConfig.CipherSuites = []uint16{
+			tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+			tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+			tls.TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305,
+			tls.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256,
+			tls.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA,
+			tls.TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA,
+			tls.TLS_RSA_WITH_AES_128_GCM_SHA256,
+			tls.TLS_RSA_WITH_AES_256_GCM_SHA384,
+		}
+		// Ensure we don't negotiate TLS 1.3 where cipher suites don't control cert selection
+		tlsConfig.MaxVersion = tls.VersionTLS12
+	default:
+		// "auto" or any other value - use default cipher suites
+		// Let Go choose the best cipher suites
+	}
+
+	// Connect with TLS using a timeout to avoid hanging
+	dialer := &net.Dialer{Timeout: timeout}
+	conn, err := tls.DialWithDialer(dialer, "tcp", dialHost, tlsConfig)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to connect: %w", err)
 	}
@@ -212,27 +232,14 @@ func InspectURLWithOptions(targetURL string, port int, connectHost string, timeo
 	}
 
 	// First certificate is the server certificate
-	serverCert := &Certificate{
-		Certificate:     certs[0],
-		Source:          u.String(),
-		Format:          FormatDER,
-		IsExpired:       certs[0].NotAfter.Before(time.Now()),
-		DaysUntilExpiry: int(time.Until(certs[0].NotAfter).Hours() / 24),
-		TLSVersion:      state.Version,
-		CipherSuite:     state.CipherSuite,
-	}
+	serverCert := newCertificate(certs[0], u.String(), FormatDER)
+	serverCert.TLSVersion = state.Version
+	serverCert.CipherSuite = state.CipherSuite
 
 	// Build chain from remaining certificates
 	var chain []*Certificate
 	for i := 1; i < len(certs); i++ {
-		chainCert := &Certificate{
-			Certificate:     certs[i],
-			Source:          fmt.Sprintf("Chain[%d]", i),
-			Format:          FormatDER,
-			IsExpired:       certs[i].NotAfter.Before(time.Now()),
-			DaysUntilExpiry: int(time.Until(certs[i].NotAfter).Hours() / 24),
-		}
-		chain = append(chain, chainCert)
+		chain = append(chain, newCertificate(certs[i], fmt.Sprintf("Chain[%d]", i), FormatDER))
 	}
 
 	return serverCert, chain, nil
@@ -247,6 +254,59 @@ func newSerialNumber() (*big.Int, error) {
 		return nil, fmt.Errorf("failed to generate serial number: %w", err)
 	}
 	return serial, nil
+}
+
+// optional wraps a string in a slice for pkix.Name fields, or returns nil
+// when the string is empty so the attribute is omitted.
+func optional(s string) []string {
+	if s == "" {
+		return nil
+	}
+	return []string{s}
+}
+
+// writePEMFile writes a single PEM block to path, creating the file with the
+// given permissions. Key files (perm 0600) are also chmodded after writing so
+// a pre-existing file with looser permissions is tightened.
+func writePEMFile(path string, block *pem.Block, perm os.FileMode) error {
+	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, perm)
+	if err != nil {
+		return err
+	}
+	if err := pem.Encode(f, block); err != nil {
+		_ = f.Close()
+		return err
+	}
+	if err := f.Close(); err != nil {
+		return err
+	}
+	// Windows has different permission semantics; skip chmod there.
+	if perm == keyFilePerm && runtime.GOOS != "windows" {
+		if err := os.Chmod(path, keyFilePerm); err != nil {
+			return fmt.Errorf("failed to set key permissions: %w", err)
+		}
+	}
+	return nil
+}
+
+// writeCertificate writes a DER-encoded certificate to path as PEM.
+func writeCertificate(path string, der []byte) error {
+	if err := writePEMFile(path, &pem.Block{Type: "CERTIFICATE", Bytes: der}, certFilePerm); err != nil {
+		return fmt.Errorf("failed to write certificate: %w", err)
+	}
+	return nil
+}
+
+// writePrivateKey writes a private key to path as PKCS#8 PEM with 0600 permissions.
+func writePrivateKey(path string, key crypto.PrivateKey) error {
+	der, err := x509.MarshalPKCS8PrivateKey(key)
+	if err != nil {
+		return fmt.Errorf("failed to marshal private key: %w", err)
+	}
+	if err := writePEMFile(path, &pem.Block{Type: "PRIVATE KEY", Bytes: der}, keyFilePerm); err != nil {
+		return fmt.Errorf("failed to write private key: %w", err)
+	}
+	return nil
 }
 
 // Generate creates a new self-signed certificate
@@ -275,12 +335,12 @@ func Generate(opts GenerateOptions) error {
 		BasicConstraintsValid: true,
 	}
 
-    // Add Subject Alternative Names (DNS, IP)
-    if len(opts.SANs) > 0 {
-        dns, ips, _, _ := splitSANs(opts.SANs)
-        template.DNSNames = append(template.DNSNames, dns...)
-        template.IPAddresses = append(template.IPAddresses, ips...)
-    }
+	// Add Subject Alternative Names (DNS, IP)
+	if len(opts.SANs) > 0 {
+		dns, ips, _, _ := splitSANs(opts.SANs)
+		template.DNSNames = append(template.DNSNames, dns...)
+		template.IPAddresses = append(template.IPAddresses, ips...)
+	}
 
 	// Create certificate
 	certDER, err := x509.CreateCertificate(rand.Reader, &template, &template, &privateKey.PublicKey, privateKey)
@@ -293,82 +353,53 @@ func Generate(opts GenerateOptions) error {
 		return fmt.Errorf("failed to create output directory: %w", err)
 	}
 
-	// Write certificate file
 	certPath := filepath.Join(opts.OutputDir, opts.CommonName+".crt")
-	certFile, err := os.Create(certPath)
-	if err != nil {
-		return fmt.Errorf("failed to create cert file: %w", err)
-	}
-	defer func() { _ = certFile.Close() }()
-
-	if err := pem.Encode(certFile, &pem.Block{
-		Type:  "CERTIFICATE",
-		Bytes: certDER,
-	}); err != nil {
-		return fmt.Errorf("failed to write certificate: %w", err)
+	if err := writeCertificate(certPath, certDER); err != nil {
+		return err
 	}
 
-	// Write private key file
 	keyPath := filepath.Join(opts.OutputDir, opts.CommonName+".key")
-	keyFile, err := os.Create(keyPath)
-	if err != nil {
-		return fmt.Errorf("failed to create key file: %w", err)
-	}
-	defer func() { _ = keyFile.Close() }()
-
-	privateKeyBytes, err := x509.MarshalPKCS8PrivateKey(privateKey)
-	if err != nil {
-		return fmt.Errorf("failed to marshal private key: %w", err)
-	}
-
-	if err := pem.Encode(keyFile, &pem.Block{
-		Type:  "PRIVATE KEY",
-		Bytes: privateKeyBytes,
-	}); err != nil {
-		return fmt.Errorf("failed to write private key: %w", err)
-	}
-
-	// Set restrictive permissions on the private key (Unix-like systems only)
-	if runtime.GOOS != "windows" {
-		if err := os.Chmod(keyPath, 0600); err != nil {
-			return fmt.Errorf("failed to set key permissions: %w", err)
-		}
-	}
-
-	return nil
+	return writePrivateKey(keyPath, privateKey)
 }
 
-// Convert changes certificate format
-func Convert(inputPath, outputPath, format string) error {
+// Convert changes certificate format and reports the detected input format.
+// PEM output preserves every certificate in a bundle; DER output requires a
+// single certificate since DER has no framing for multiple entries.
+func Convert(inputPath, outputPath, format string) (inputFormat string, err error) {
 	data, err := os.ReadFile(inputPath)
 	if err != nil {
-		return fmt.Errorf("failed to read input file: %w", err)
+		return "", fmt.Errorf("failed to read input file: %w", err)
 	}
 
-	cert, _, err := parseCertificate(data)
+	certs, inputFormat, err := parseCertificates(data)
 	if err != nil {
-		return fmt.Errorf("failed to parse certificate: %w", err)
+		return inputFormat, fmt.Errorf("failed to parse certificate: %w", err)
 	}
 
 	var output []byte
 
 	switch strings.ToLower(format) {
 	case "pem":
-		output = pem.EncodeToMemory(&pem.Block{
-			Type:  "CERTIFICATE",
-			Bytes: cert.Raw,
-		})
+		for _, c := range certs {
+			output = append(output, pem.EncodeToMemory(&pem.Block{
+				Type:  "CERTIFICATE",
+				Bytes: c.Raw,
+			})...)
+		}
 	case "der":
-		output = cert.Raw
+		if len(certs) > 1 {
+			return inputFormat, fmt.Errorf("input contains %d certificates; DER output supports only one", len(certs))
+		}
+		output = certs[0].Raw
 	default:
-		return fmt.Errorf("unsupported format: %s", format)
+		return inputFormat, fmt.Errorf("unsupported format: %s", format)
 	}
 
-	if err := os.WriteFile(outputPath, output, 0644); err != nil {
-		return fmt.Errorf("failed to write output file: %w", err)
+	if err := os.WriteFile(outputPath, output, certFilePerm); err != nil {
+		return inputFormat, fmt.Errorf("failed to write output file: %w", err)
 	}
 
-	return nil
+	return inputFormat, nil
 }
 
 // VerifyOptions contains options for certificate verification
@@ -388,10 +419,10 @@ func Verify(certPath, caPath, hostname string) (*VerificationResult, error) {
 // VerifyWithOptions checks certificate validity, hostname matching, chain
 // trust, key matching, and expiry thresholds depending on the options set.
 func VerifyWithOptions(opts VerifyOptions) (*VerificationResult, error) {
-    cert, err := InspectFile(opts.CertPath)
-    if err != nil {
-        return nil, err
-    }
+	cert, err := InspectFile(opts.CertPath)
+	if err != nil {
+		return nil, err
+	}
 
 	result := &VerificationResult{
 		Certificate: cert,
@@ -415,13 +446,13 @@ func VerifyWithOptions(opts VerifyOptions) (*VerificationResult, error) {
 				cert.DaysUntilExpiry, int(opts.ExpiresIn.Hours()/24)))
 	}
 
-    // Check hostname if provided
-    if opts.Hostname != "" {
-        if err := cert.VerifyHostname(opts.Hostname); err != nil {
-            result.IsValid = false
-            result.Errors = append(result.Errors, fmt.Sprintf("Hostname verification failed: %v", err))
-        }
-    }
+	// Check hostname if provided
+	if opts.Hostname != "" {
+		if err := cert.VerifyHostname(opts.Hostname); err != nil {
+			result.IsValid = false
+			result.Errors = append(result.Errors, fmt.Sprintf("Hostname verification failed: %v", err))
+		}
+	}
 
 	// Check that the private key matches the certificate if provided
 	if opts.KeyPath != "" {
@@ -441,36 +472,36 @@ func VerifyWithOptions(opts VerifyOptions) (*VerificationResult, error) {
 		}
 	}
 
-    // CA chain verification when a CA bundle/path is provided
-    if opts.CAPath != "" {
-        caData, err := os.ReadFile(opts.CAPath)
-        if err != nil {
-            return nil, fmt.Errorf("failed to read CA file: %w", err)
-        }
+	// CA chain verification when a CA bundle/path is provided
+	if opts.CAPath != "" {
+		caData, err := os.ReadFile(opts.CAPath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read CA file: %w", err)
+		}
 
-        roots := x509.NewCertPool()
-        // Try PEM first
-        if ok := roots.AppendCertsFromPEM(caData); !ok {
-            // Fallback: try single DER certificate
-            if caCert, err := x509.ParseCertificate(caData); err == nil {
-                roots.AddCert(caCert)
-            } else {
-                return nil, fmt.Errorf("failed to parse CA certificate(s)")
-            }
-        }
+		roots := x509.NewCertPool()
+		// Try PEM first
+		if ok := roots.AppendCertsFromPEM(caData); !ok {
+			// Fallback: try single DER certificate
+			if caCert, err := x509.ParseCertificate(caData); err == nil {
+				roots.AddCert(caCert)
+			} else {
+				return nil, fmt.Errorf("failed to parse CA certificate(s)")
+			}
+		}
 
-        verifyOpts := x509.VerifyOptions{Roots: roots}
-        if opts.Hostname != "" {
-            verifyOpts.DNSName = opts.Hostname
-        }
+		verifyOpts := x509.VerifyOptions{Roots: roots}
+		if opts.Hostname != "" {
+			verifyOpts.DNSName = opts.Hostname
+		}
 
-        if _, err := cert.Certificate.Verify(verifyOpts); err != nil {
-            result.IsValid = false
-            result.Errors = append(result.Errors, fmt.Sprintf("Chain verification failed: %v", err))
-        }
-    }
+		if _, err := cert.Verify(verifyOpts); err != nil {
+			result.IsValid = false
+			result.Errors = append(result.Errors, fmt.Sprintf("Chain verification failed: %v", err))
+		}
+	}
 
-    return result, nil
+	return result, nil
 }
 
 // parsePrivateKey parses a PEM- or DER-encoded private key in PKCS#8,
@@ -585,47 +616,25 @@ func GenerateCSR(options CSROptions, csrPath, keyPath string) error {
 		return fmt.Errorf("failed to generate private key: %w", err)
 	}
 
-	// Prepare subject
-	subject := pkix.Name{
-		CommonName: options.CommonName,
-	}
-
-	if options.Organization != "" {
-		subject.Organization = []string{options.Organization}
-	}
-	if options.OrganizationalUnit != "" {
-		subject.OrganizationalUnit = []string{options.OrganizationalUnit}
-	}
-	if options.Country != "" {
-		subject.Country = []string{options.Country}
-	}
-	if options.Province != "" {
-		subject.Province = []string{options.Province}
-	}
-	if options.Locality != "" {
-		subject.Locality = []string{options.Locality}
-	}
-
 	// Prepare CSR template
 	template := x509.CertificateRequest{
-		Subject: subject,
+		Subject: pkix.Name{
+			CommonName:         options.CommonName,
+			Organization:       optional(options.Organization),
+			OrganizationalUnit: optional(options.OrganizationalUnit),
+			Country:            optional(options.Country),
+			Province:           optional(options.Province),
+			Locality:           optional(options.Locality),
+		},
+		EmailAddresses: optional(options.EmailAddress),
 	}
 
-	// Add email if provided
-	if options.EmailAddress != "" {
-		template.EmailAddresses = []string{options.EmailAddress}
-	}
-
-    // Process SANs (DNS, IP, optional email/URI)
-    dns, ips, emails, uris := splitSANs(options.SANs)
-    template.DNSNames = append(template.DNSNames, dns...)
-    template.IPAddresses = append(template.IPAddresses, ips...)
-    if len(emails) > 0 {
-        template.EmailAddresses = append(template.EmailAddresses, emails...)
-    }
-    if len(uris) > 0 {
-        template.URIs = append(template.URIs, uris...)
-    }
+	// Process SANs (DNS, IP, optional email/URI)
+	dns, ips, emails, uris := splitSANs(options.SANs)
+	template.DNSNames = append(template.DNSNames, dns...)
+	template.IPAddresses = append(template.IPAddresses, ips...)
+	template.EmailAddresses = append(template.EmailAddresses, emails...)
+	template.URIs = append(template.URIs, uris...)
 
 	// Generate CSR
 	csrBytes, err := x509.CreateCertificateRequest(rand.Reader, &template, privateKey)
@@ -633,40 +642,11 @@ func GenerateCSR(options CSROptions, csrPath, keyPath string) error {
 		return fmt.Errorf("failed to create CSR: %w", err)
 	}
 
-	// Write CSR to file
-	csrFile, err := os.Create(csrPath)
-	if err != nil {
-		return fmt.Errorf("failed to create CSR file: %w", err)
-	}
-	defer csrFile.Close()
-
-	if err := pem.Encode(csrFile, &pem.Block{
-		Type:  "CERTIFICATE REQUEST",
-		Bytes: csrBytes,
-	}); err != nil {
+	if err := writePEMFile(csrPath, &pem.Block{Type: "CERTIFICATE REQUEST", Bytes: csrBytes}, certFilePerm); err != nil {
 		return fmt.Errorf("failed to write CSR: %w", err)
 	}
 
-	// Write private key to file
-	keyFile, err := os.Create(keyPath)
-	if err != nil {
-		return fmt.Errorf("failed to create private key file: %w", err)
-	}
-	defer keyFile.Close()
-
-	privateKeyBytes, err := x509.MarshalPKCS8PrivateKey(privateKey)
-	if err != nil {
-		return fmt.Errorf("failed to marshal private key: %w", err)
-	}
-
-	if err := pem.Encode(keyFile, &pem.Block{
-		Type:  "PRIVATE KEY",
-		Bytes: privateKeyBytes,
-	}); err != nil {
-		return fmt.Errorf("failed to write private key: %w", err)
-	}
-
-	return nil
+	return writePrivateKey(keyPath, privateKey)
 }
 
 // ParseCSR parses a CSR from PEM-encoded data
@@ -684,6 +664,8 @@ func ParseCSR(data []byte) (*CSRInfo, error) {
 	info := &CSRInfo{
 		Subject:            csr.Subject,
 		SignatureAlgorithm: csr.SignatureAlgorithm.String(),
+		PublicKeyAlgorithm: getPublicKeyAlgorithm(csr.PublicKey),
+		KeySize:            getPublicKeySize(csr.PublicKey),
 	}
 
 	// Collect SANs
@@ -698,15 +680,6 @@ func ParseCSR(data []byte) (*CSRInfo, error) {
 		info.SANs = append(info.SANs, "uri:"+uri.String())
 	}
 
-	// Determine public key info
-	switch pub := csr.PublicKey.(type) {
-	case *rsa.PublicKey:
-		info.PublicKeyAlgorithm = "RSA"
-		info.KeySize = pub.N.BitLen()
-	default:
-		info.PublicKeyAlgorithm = "Unknown"
-	}
-
 	return info, nil
 }
 
@@ -718,18 +691,6 @@ func GenerateCA(options CAOptions, certPath, keyPath string) error {
 		return fmt.Errorf("failed to generate private key: %w", err)
 	}
 
-	// Prepare subject
-	subject := pkix.Name{
-		CommonName: options.CommonName,
-	}
-
-	if options.Organization != "" {
-		subject.Organization = []string{options.Organization}
-	}
-	if options.Country != "" {
-		subject.Country = []string{options.Country}
-	}
-
 	serialNumber, err := newSerialNumber()
 	if err != nil {
 		return err
@@ -738,9 +699,13 @@ func GenerateCA(options CAOptions, certPath, keyPath string) error {
 	// Prepare CA certificate template
 	template := x509.Certificate{
 		SerialNumber: serialNumber,
-		Subject:      subject,
-		NotBefore:    time.Now(),
-		NotAfter:     time.Now().AddDate(0, 0, options.Days),
+		Subject: pkix.Name{
+			CommonName:   options.CommonName,
+			Organization: optional(options.Organization),
+			Country:      optional(options.Country),
+		},
+		NotBefore: time.Now(),
+		NotAfter:  time.Now().AddDate(0, 0, options.Days),
 
 		// CA specific settings
 		IsCA:                  true,
@@ -762,60 +727,17 @@ func GenerateCA(options CAOptions, certPath, keyPath string) error {
 		},
 	}
 
-	// Generate certificate
-	certBytes, err := x509.CreateCertificate(
-		rand.Reader,
-		&template,
-		&template, // Self-signed, so parent is itself
-		&privateKey.PublicKey,
-		privateKey,
-	)
+	// Generate certificate (self-signed, so parent is itself)
+	certBytes, err := x509.CreateCertificate(rand.Reader, &template, &template, &privateKey.PublicKey, privateKey)
 	if err != nil {
 		return fmt.Errorf("failed to create certificate: %w", err)
 	}
 
-	// Write certificate to file
-	certFile, err := os.Create(certPath)
-	if err != nil {
-		return fmt.Errorf("failed to create certificate file: %w", err)
-	}
-	defer certFile.Close()
-
-	if err := pem.Encode(certFile, &pem.Block{
-		Type:  "CERTIFICATE",
-		Bytes: certBytes,
-	}); err != nil {
-		return fmt.Errorf("failed to write certificate: %w", err)
+	if err := writeCertificate(certPath, certBytes); err != nil {
+		return err
 	}
 
-	// Write private key to file
-	keyFile, err := os.Create(keyPath)
-	if err != nil {
-		return fmt.Errorf("failed to create private key file: %w", err)
-	}
-	defer keyFile.Close()
-
-	privateKeyBytes, err := x509.MarshalPKCS8PrivateKey(privateKey)
-	if err != nil {
-		return fmt.Errorf("failed to marshal private key: %w", err)
-	}
-
-	if err := pem.Encode(keyFile, &pem.Block{
-		Type:  "PRIVATE KEY",
-		Bytes: privateKeyBytes,
-	}); err != nil {
-		return fmt.Errorf("failed to write private key: %w", err)
-	}
-
-	// Set restrictive permissions on the private key (Unix-like systems only)
-	// Windows has different permission semantics
-	if runtime.GOOS != "windows" {
-		if err := os.Chmod(keyPath, 0600); err != nil {
-			return fmt.Errorf("failed to set key permissions: %w", err)
-		}
-	}
-
-	return nil
+	return writePrivateKey(keyPath, privateKey)
 }
 
 // SignCSR signs a Certificate Signing Request with a CA
@@ -841,41 +763,26 @@ func SignCSR(options SignOptions, certPath string) error {
 		return fmt.Errorf("CSR signature verification failed: %w", err)
 	}
 
-	// Read CA certificate
+	// Read CA certificate (PEM or DER)
 	caCertData, err := os.ReadFile(options.CACert)
 	if err != nil {
 		return fmt.Errorf("failed to read CA certificate: %w", err)
 	}
 
-	caBlock, _ := pem.Decode(caCertData)
-	if caBlock == nil {
-		return fmt.Errorf("failed to parse CA certificate PEM block")
-	}
-
-	caCert, err := x509.ParseCertificate(caBlock.Bytes)
+	caCert, _, err := parseCertificate(caCertData)
 	if err != nil {
 		return fmt.Errorf("failed to parse CA certificate: %w", err)
 	}
 
-	// Read CA private key
+	// Read CA private key (PKCS#8, PKCS#1, or EC; PEM or DER)
 	caKeyData, err := os.ReadFile(options.CAKey)
 	if err != nil {
 		return fmt.Errorf("failed to read CA private key: %w", err)
 	}
 
-	keyBlock, _ := pem.Decode(caKeyData)
-	if keyBlock == nil {
-		return fmt.Errorf("failed to parse CA private key PEM block")
-	}
-
-	caKey, err := x509.ParsePKCS8PrivateKey(keyBlock.Bytes)
+	caKey, err := parsePrivateKey(caKeyData)
 	if err != nil {
-		// Try PKCS1 format
-		if rsaKey, err := x509.ParsePKCS1PrivateKey(keyBlock.Bytes); err == nil {
-			caKey = rsaKey
-		} else {
-			return fmt.Errorf("failed to parse CA private key: %w", err)
-		}
+		return fmt.Errorf("failed to parse CA private key: %w", err)
 	}
 
 	// Generate a random serial number
@@ -902,15 +809,13 @@ func SignCSR(options SignOptions, certPath string) error {
 	}
 
 	// Handle SANs - use provided SANs or fall back to CSR SANs
-    if len(options.SANs) > 0 {
-        // Override with provided SANs
-        dns, ips, emails, uris := splitSANs(options.SANs)
-        template.DNSNames = append(template.DNSNames, dns...)
-        template.IPAddresses = append(template.IPAddresses, ips...)
-        if len(emails) > 0 { template.EmailAddresses = append(template.EmailAddresses, emails...) }
-        if len(uris) > 0 { template.URIs = append(template.URIs, uris...) }
-    } else {
-		// Use SANs from CSR
+	if len(options.SANs) > 0 {
+		dns, ips, emails, uris := splitSANs(options.SANs)
+		template.DNSNames = append(template.DNSNames, dns...)
+		template.IPAddresses = append(template.IPAddresses, ips...)
+		template.EmailAddresses = append(template.EmailAddresses, emails...)
+		template.URIs = append(template.URIs, uris...)
+	} else {
 		template.DNSNames = csr.DNSNames
 		template.IPAddresses = csr.IPAddresses
 		template.EmailAddresses = csr.EmailAddresses
@@ -918,32 +823,12 @@ func SignCSR(options SignOptions, certPath string) error {
 	}
 
 	// Create certificate
-	certBytes, err := x509.CreateCertificate(
-		rand.Reader,
-		&template,
-		caCert,
-		csr.PublicKey,
-		caKey,
-	)
+	certBytes, err := x509.CreateCertificate(rand.Reader, &template, caCert, csr.PublicKey, caKey)
 	if err != nil {
 		return fmt.Errorf("failed to create certificate: %w", err)
 	}
 
-	// Write certificate to file
-	certFile, err := os.Create(certPath)
-	if err != nil {
-		return fmt.Errorf("failed to create certificate file: %w", err)
-	}
-	defer certFile.Close()
-
-	if err := pem.Encode(certFile, &pem.Block{
-		Type:  "CERTIFICATE",
-		Bytes: certBytes,
-	}); err != nil {
-		return fmt.Errorf("failed to write certificate: %w", err)
-	}
-
-	return nil
+	return writeCertificate(certPath, certBytes)
 }
 
 // GenerateOptions contains options for certificate generation
@@ -1050,67 +935,98 @@ func TLSVersionName(version uint16) string {
 	return fmt.Sprintf("0x%04x", version)
 }
 
-// CheckTLSVersions tests which TLS versions are supported by a server
+// probedTLSVersions lists the versions CheckTLSVersions tests, in ascending order.
+var probedTLSVersions = []TLSVersion{
+	TLSVersionTLS10,
+	TLSVersionTLS11,
+	TLSVersionTLS12,
+	TLSVersionTLS13,
+}
+
+// CheckTLSVersions tests which TLS versions are supported by a server.
+// All versions are probed concurrently and results are returned in ascending
+// version order. Some servers and middleboxes cap concurrent handshakes per
+// client, which can make the parallel round fail spuriously, so when at
+// least one version succeeded (proving the host is reachable) each failed
+// version is re-probed once sequentially. A host that answers nothing is
+// not retried, so it still fails in about one timeout.
 func CheckTLSVersions(host string, port int, timeout time.Duration) (*TLSResult, error) {
 	result := &TLSResult{
 		Host:     host,
 		Port:     port,
-		Versions: make([]TLSVersionInfo, 0, 4),
+		Versions: make([]TLSVersionInfo, len(probedTLSVersions)),
 	}
 
 	dialHost := net.JoinHostPort(host, strconv.Itoa(port))
 	dialer := &net.Dialer{Timeout: timeout}
 
-	// Test each TLS version
-	versions := []TLSVersion{
-		TLSVersionTLS10,
-		TLSVersionTLS11,
-		TLSVersionTLS12,
-		TLSVersionTLS13,
+	var wg sync.WaitGroup
+	for i, version := range probedTLSVersions {
+		wg.Add(1)
+		go func(i int, version TLSVersion) {
+			defer wg.Done()
+			result.Versions[i] = probeTLSVersion(dialer, dialHost, host, version)
+		}(i, version)
 	}
+	wg.Wait()
 
-	var minSupported, maxSupported TLSVersion
-
-	for _, version := range versions {
-		info := TLSVersionInfo{
-			Version: version,
-			Name:    tlsVersionNames[version],
-			Supported: false,
-		}
-
-		tlsConfig := &tls.Config{
-			InsecureSkipVerify: true,
-			ServerName:         host,
-			MinVersion:         uint16(version),
-			MaxVersion:         uint16(version),
-		}
-
-		conn, err := tls.DialWithDialer(dialer, "tcp", dialHost, tlsConfig)
-		if err != nil {
-			// Check if it's a version-specific error
-			info.Error = err.Error()
-			info.Supported = false
-		} else {
-			info.Supported = true
-			info.CipherSuite = conn.ConnectionState().CipherSuite
-			_ = conn.Close()
-		}
-
-		result.Versions = append(result.Versions, info)
-
-		// Track min and max supported versions
+	anySupported := false
+	for _, info := range result.Versions {
 		if info.Supported {
-			if minSupported == 0 || version < minSupported {
-				minSupported = version
+			anySupported = true
+			break
+		}
+	}
+
+	// Sequential retry for versions that may have failed under connection limits
+	if anySupported {
+		for i, info := range result.Versions {
+			if info.Supported {
+				continue
 			}
-			if version > maxSupported {
-				maxSupported = version
+			if retry := probeTLSVersion(dialer, dialHost, host, info.Version); retry.Supported {
+				result.Versions[i] = retry
 			}
 		}
 	}
 
-	result.MinSupported = minSupported
-	result.MaxSupported = maxSupported
+	// Track min and max supported versions
+	for _, info := range result.Versions {
+		if !info.Supported {
+			continue
+		}
+		if result.MinSupported == 0 || info.Version < result.MinSupported {
+			result.MinSupported = info.Version
+		}
+		if info.Version > result.MaxSupported {
+			result.MaxSupported = info.Version
+		}
+	}
 
 	return result, nil
+}
+
+// probeTLSVersion attempts a handshake pinned to a single TLS version.
+func probeTLSVersion(dialer *net.Dialer, dialHost, serverName string, version TLSVersion) TLSVersionInfo {
+	info := TLSVersionInfo{
+		Version: version,
+		Name:    tlsVersionNames[version],
+	}
+
+	tlsConfig := &tls.Config{
+		InsecureSkipVerify: true, //nolint:gosec // probing version support, not authenticating
+		ServerName:         serverName,
+		MinVersion:         uint16(version),
+		MaxVersion:         uint16(version),
+	}
+
+	conn, err := tls.DialWithDialer(dialer, "tcp", dialHost, tlsConfig)
+	if err != nil {
+		info.Error = err.Error()
+		return info
+	}
+	info.Supported = true
+	info.CipherSuite = conn.ConnectionState().CipherSuite
+	_ = conn.Close()
+	return info
 }

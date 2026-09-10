@@ -142,14 +142,14 @@ func TestLoadFromConfigFile(t *testing.T) {
 	origHome := os.Getenv("HOME")
 	origUserProfile := os.Getenv("USERPROFILE")
 	defer func() {
-		os.Setenv("HOME", origHome)
-		os.Setenv("USERPROFILE", origUserProfile)
+		_ = os.Setenv("HOME", origHome)
+		_ = os.Setenv("USERPROFILE", origUserProfile)
 		Reset()
 	}()
 
-	os.Setenv("HOME", tmpDir)
-	os.Setenv("USERPROFILE", tmpDir) // For Windows compatibility
-	Reset()                          // Clear any cached config
+	_ = os.Setenv("HOME", tmpDir)
+	_ = os.Setenv("USERPROFILE", tmpDir) // For Windows compatibility
+	Reset()                              // Clear any cached config
 
 	cfg := Load()
 
@@ -175,13 +175,13 @@ func TestLoadWithNoConfigFile(t *testing.T) {
 	origHome := os.Getenv("HOME")
 	origUserProfile := os.Getenv("USERPROFILE")
 	defer func() {
-		os.Setenv("HOME", origHome)
-		os.Setenv("USERPROFILE", origUserProfile)
+		_ = os.Setenv("HOME", origHome)
+		_ = os.Setenv("USERPROFILE", origUserProfile)
 		Reset()
 	}()
 
-	os.Setenv("HOME", tmpDir)
-	os.Setenv("USERPROFILE", tmpDir) // For Windows compatibility
+	_ = os.Setenv("HOME", tmpDir)
+	_ = os.Setenv("USERPROFILE", tmpDir) // For Windows compatibility
 	Reset()
 
 	cfg := Load()
@@ -213,13 +213,13 @@ func TestLoadWithInvalidYAML(t *testing.T) {
 	origHome := os.Getenv("HOME")
 	origUserProfile := os.Getenv("USERPROFILE")
 	defer func() {
-		os.Setenv("HOME", origHome)
-		os.Setenv("USERPROFILE", origUserProfile)
+		_ = os.Setenv("HOME", origHome)
+		_ = os.Setenv("USERPROFILE", origUserProfile)
 		Reset()
 	}()
 
-	os.Setenv("HOME", tmpDir)
-	os.Setenv("USERPROFILE", tmpDir) // For Windows compatibility
+	_ = os.Setenv("HOME", tmpDir)
+	_ = os.Setenv("USERPROFILE", tmpDir) // For Windows compatibility
 	Reset()
 
 	cfg := Load()
@@ -250,19 +250,19 @@ func TestXDGConfigPath(t *testing.T) {
 	origUserProfile := os.Getenv("USERPROFILE")
 	origXDG := os.Getenv("XDG_CONFIG_HOME")
 	defer func() {
-		os.Setenv("HOME", origHome)
-		os.Setenv("USERPROFILE", origUserProfile)
+		_ = os.Setenv("HOME", origHome)
+		_ = os.Setenv("USERPROFILE", origUserProfile)
 		if origXDG != "" {
-			os.Setenv("XDG_CONFIG_HOME", origXDG)
+			_ = os.Setenv("XDG_CONFIG_HOME", origXDG)
 		} else {
-			os.Unsetenv("XDG_CONFIG_HOME")
+			_ = os.Unsetenv("XDG_CONFIG_HOME")
 		}
 		Reset()
 	}()
 
-	os.Setenv("HOME", tmpDir)
-	os.Setenv("USERPROFILE", tmpDir) // For Windows compatibility
-	os.Unsetenv("XDG_CONFIG_HOME")   // Clear so it falls back to HOME/.config
+	_ = os.Setenv("HOME", tmpDir)
+	_ = os.Setenv("USERPROFILE", tmpDir) // For Windows compatibility
+	_ = os.Unsetenv("XDG_CONFIG_HOME")   // Clear so it falls back to HOME/.config
 	Reset()
 
 	cfg := Load()

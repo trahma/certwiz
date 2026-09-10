@@ -4,7 +4,7 @@ BINARY_NAME=cert
 GO=go
 GOFLAGS=-v
 
-.PHONY: all build clean install test test-coverage test-coverage-html test-generate-certs run fmt vet help
+.PHONY: all build clean install test test-coverage test-coverage-html test-generate-certs run fmt vet help build-all release-test release-local
 
 ## help: Display this help message
 help:
@@ -60,19 +60,6 @@ fmt:
 ## vet: Run go vet
 vet:
 	$(GO) vet ./...
-
-## test-ci: Test CI compatibility locally
-test-ci: clean
-	@echo "Testing CI compatibility..."
-	@echo "1. Setting Go 1.20 in go.mod..."
-	@go mod edit -go=1.20
-	@echo "2. Building binary..."
-	@$(GO) build -v -o $(BINARY_NAME) . || (echo "Build failed"; exit 1)
-	@echo "3. Testing --version flag..."
-	@./$(BINARY_NAME) --version | grep -q "cert version" || (echo "--version flag failed"; exit 1)
-	@echo "4. Running tests..."
-	@$(GO) test ./... || (echo "Tests failed"; exit 1)
-	@echo "✓ All CI tests passed"
 
 ## run: Build and run the binary
 run: build

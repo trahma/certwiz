@@ -309,7 +309,7 @@ func TestConvert(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := Convert(tt.inputFile, tt.outputFile, tt.format)
+			inputFormat, err := Convert(tt.inputFile, tt.outputFile, tt.format)
 			if tt.expectError {
 				if err == nil {
 					t.Error("Expected error but got none")
@@ -318,6 +318,9 @@ func TestConvert(t *testing.T) {
 			}
 			if err != nil {
 				t.Fatalf("Unexpected error: %v", err)
+			}
+			if inputFormat != FormatPEM && inputFormat != FormatDER {
+				t.Errorf("Expected detected input format PEM or DER, got %q", inputFormat)
 			}
 
 			// Verify output file exists

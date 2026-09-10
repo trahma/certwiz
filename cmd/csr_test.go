@@ -3,6 +3,8 @@ package cmd
 import (
 	"os"
 	"path/filepath"
+	"runtime"
+	"strings"
 	"testing"
 )
 
@@ -12,7 +14,7 @@ func TestCSRCommand(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tmpDir)
+	defer func() { _ = os.RemoveAll(tmpDir) }()
 
 	// Test basic CSR generation
 	t.Run("BasicCSR", func(t *testing.T) {
@@ -35,8 +37,37 @@ func TestCSRCommand(t *testing.T) {
 			t.Errorf("CSR file was not created: %s", csrPath)
 		}
 
-		if _, err := os.Stat(keyPath); os.IsNotExist(err) {
-			t.Errorf("Key file was not created: %s", keyPath)
+		info, err := os.Stat(keyPath)
+		if os.IsNotExist(err) {
+			t.Fatalf("Key file was not created: %s", keyPath)
+		}
+		if runtime.GOOS != "windows" && info.Mode().Perm() != 0600 {
+			t.Errorf("Key file permissions = %v, want 0600", info.Mode().Perm())
+		}
+	})
+
+	// Test that the generated CSR is read back and displayed
+	t.Run("DisplaysCSRDetails", func(t *testing.T) {
+		csrCN = "display.example.com"
+		csrOrg = "Display Org"
+		csrCountry = ""
+		csrState = ""
+		csrOutput = tmpDir
+		csrKeySize = 2048
+		csrSANs = []string{"display.example.com", "IP:10.0.0.1"}
+		setOutputMode(t, false, true)
+
+		var err error
+		out := captureStdout(t, func() {
+			err = csrCmd.RunE(csrCmd, []string{})
+		})
+		if err != nil {
+			t.Fatalf("CSR generation failed: %v", err)
+		}
+		for _, want := range []string{"CSR Details", "CN=display.example.com", "O=Display Org", "RSA 2048 bits", "10.0.0.1"} {
+			if !strings.Contains(out, want) {
+				t.Errorf("output missing %q:\n%s", want, out)
+			}
 		}
 	})
 

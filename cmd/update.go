@@ -6,13 +6,19 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"runtime"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/spf13/cobra"
 )
+
+const installerTimeout = 30 * time.Second
+
+// installerURL is where the installer script is fetched from. It is a
+// variable so tests can point it at a local server.
+var installerURL = "https://raw.githubusercontent.com/trahma/certwiz/main/install.sh"
 
 var forceUpdate bool
 
@@ -22,111 +28,112 @@ var updateCmd = &cobra.Command{
 	Long: `Update cert to the latest version by downloading and running the installer.
 
 This command will:
-1. Check for the latest available version
-2. Compare with your current version
-3. If an update is available, download and run the installer
-4. The installer will upgrade cert in place`,
-	Run: func(cmd *cobra.Command, args []string) {
+1. Download the installer script
+2. Run it, which checks the latest release against your current version
+3. If an update is available, the installer upgrades cert in place`,
+	RunE: func(cmd *cobra.Command, args []string) error {
 		if runtime.GOOS == "windows" {
-			fmt.Println("Auto-update is not supported on Windows.")
 			fmt.Println("Please download the latest version from:")
 			fmt.Println("  https://github.com/trahma/certwiz/releases")
-			os.Exit(1)
+			return fmt.Errorf("auto-update is not supported on Windows")
 		}
 
-		fmt.Println("Checking for updates...")
-
-		// Check current version
 		currentVersion := strings.TrimPrefix(version, "v")
 		fmt.Printf("Current version: v%s\n", currentVersion)
 
-		// Download and run the installer script
-		fmt.Println("\nFetching latest version information...")
-
-		// Download the installer script to a temp file
-		installerURL := "https://raw.githubusercontent.com/trahma/certwiz/main/install.sh"
-		
-		// Create temp file for installer script
-		tempDir := os.TempDir()
-		installerPath := filepath.Join(tempDir, "certwiz-installer.sh")
-		
-		// Download the installer
 		fmt.Println("Downloading installer...")
-		resp, err := http.Get(installerURL)
+		installerPath, err := downloadInstaller()
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error downloading installer: %v\n", err)
-			os.Exit(1)
+			return err
 		}
-		defer resp.Body.Close()
 
-		if resp.StatusCode != http.StatusOK {
-			fmt.Fprintf(os.Stderr, "Error downloading installer: unexpected status %s\n", resp.Status)
-			os.Exit(1)
-		}
-		
-		// Create the installer file
-		installerFile, err := os.Create(installerPath)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error creating installer file: %v\n", err)
-			os.Exit(1)
-		}
-		
-		// Write the installer content
-		_, err = io.Copy(installerFile, resp.Body)
-		installerFile.Close()
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error writing installer: %v\n", err)
-			os.Exit(1)
-		}
-		
-		// Make installer executable
-		if err := os.Chmod(installerPath, 0755); err != nil {
-			fmt.Fprintf(os.Stderr, "Error making installer executable: %v\n", err)
-			os.Exit(1)
-		}
-		
 		// Clear extended attributes on macOS
 		if runtime.GOOS == "darwin" {
-			xattrCmd := exec.Command("xattr", "-cr", installerPath)
-			_ = xattrCmd.Run() // Ignore errors, xattr might not be available
+			_ = exec.Command("xattr", "-cr", installerPath).Run() // xattr might not be available
 		}
-		
-		// Prepare arguments for the installer
-		// For syscall.Exec, the first argument must be the program name itself
-		installerArgs := []string{"bash", installerPath}
-		if forceUpdate {
-			installerArgs = append(installerArgs, "--force")
-		}
-		
+
 		fmt.Println("Running installer...")
-		
-		// Use syscall.Exec to replace the current process with the installer
-		// This breaks the inheritance chain that might be causing issues
-		env := os.Environ()
-		
-		// Find bash executable
+
 		bashPath, err := exec.LookPath("bash")
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error finding bash: %v\n", err)
-			os.Exit(1)
+			_ = os.Remove(installerPath)
+			return fmt.Errorf("error finding bash: %w", err)
 		}
-		
-		// Replace current process with bash running the installer
-		// This ensures the installer runs in a clean context
-		if err := syscall.Exec(bashPath, installerArgs, env); err != nil {
+
+		argv := installerArgv(installerPath, forceUpdate)
+
+		// Replace the current process with bash running the installer so it
+		// runs in a clean context; the wrapper removes the script when it
+		// exits. Exec only returns on failure.
+		if err := syscall.Exec(bashPath, argv, os.Environ()); err != nil {
 			fmt.Fprintf(os.Stderr, "Error executing installer: %v\n", err)
-			// Fallback to regular exec if syscall.Exec fails
-			// Skip the first "bash" argument for exec.Command
-			cmd := exec.Command("bash", installerArgs[1:]...)
-			cmd.Stdin = os.Stdin
-			cmd.Stdout = os.Stdout
-			cmd.Stderr = os.Stderr
-			if err := cmd.Run(); err != nil {
-				fmt.Fprintf(os.Stderr, "Error running installer: %v\n", err)
-				os.Exit(1)
+			// Fallback to a child process; skip argv[0]
+			child := exec.Command(bashPath, argv[1:]...)
+			child.Stdin = os.Stdin
+			child.Stdout = os.Stdout
+			child.Stderr = os.Stderr
+			runErr := child.Run()
+			_ = os.Remove(installerPath)
+			if runErr != nil {
+				return fmt.Errorf("error running installer: %w", runErr)
 			}
 		}
+		return nil
 	},
+}
+
+// installerWrapper is the bash -c script that runs the downloaded installer
+// (passed as $1) with any remaining arguments and removes it on exit, so the
+// temp file is cleaned up even though the installer replaces this process.
+const installerWrapper = `script="$1"; shift; trap 'rm -f "$script"' EXIT; bash "$script" "$@"`
+
+// installerArgv builds the argv for exec'ing bash with installerWrapper.
+// argv[0] is the program name as required by syscall.Exec; $0 inside the
+// wrapper is "cert-update" and $1 is the installer path.
+func installerArgv(installerPath string, force bool) []string {
+	argv := []string{"bash", "-c", installerWrapper, "cert-update", installerPath}
+	if force {
+		argv = append(argv, "--force")
+	}
+	return argv
+}
+
+// downloadInstaller fetches the installer script into a private temporary
+// file and returns its path. The caller is responsible for removing it.
+func downloadInstaller() (string, error) {
+	client := &http.Client{Timeout: installerTimeout}
+	resp, err := client.Get(installerURL)
+	if err != nil {
+		return "", fmt.Errorf("error downloading installer: %w", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("error downloading installer: unexpected status %s", resp.Status)
+	}
+
+	installerFile, err := os.CreateTemp("", "certwiz-installer-*.sh")
+	if err != nil {
+		return "", fmt.Errorf("error creating installer file: %w", err)
+	}
+	installerPath := installerFile.Name()
+
+	_, copyErr := io.Copy(installerFile, resp.Body)
+	closeErr := installerFile.Close()
+	if copyErr != nil || closeErr != nil {
+		_ = os.Remove(installerPath)
+		if copyErr != nil {
+			return "", fmt.Errorf("error writing installer: %w", copyErr)
+		}
+		return "", fmt.Errorf("error writing installer: %w", closeErr)
+	}
+
+	if err := os.Chmod(installerPath, 0755); err != nil {
+		_ = os.Remove(installerPath)
+		return "", fmt.Errorf("error making installer executable: %w", err)
+	}
+
+	return installerPath, nil
 }
 
 func init() {

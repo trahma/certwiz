@@ -2,7 +2,6 @@ package cert
 
 import (
 	"crypto/tls"
-	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/json"
 	"fmt"
@@ -150,10 +149,10 @@ func (c *Certificate) ToJSON() JSONCertificate {
 	}
 
 	// Add key usage
-	jc.KeyUsage = getKeyUsageStrings(c.KeyUsage)
+	jc.KeyUsage = KeyUsageNames(c.KeyUsage)
 
 	// Add extended key usage
-	jc.ExtKeyUsage = getExtKeyUsageStrings(c.ExtKeyUsage)
+	jc.ExtKeyUsage = ExtKeyUsageNames(c.ExtKeyUsage)
 
 	return jc
 }
@@ -202,11 +201,9 @@ func (vr *VerificationResult) ToJSON() JSONVerificationResult {
 // ToJSON converts TLSResult to JSONTLSResult
 func (tr *TLSResult) ToJSON() JSONTLSResult {
 	jsonResult := JSONTLSResult{
-		Host:         tr.Host,
-		Port:         tr.Port,
-		Versions:     make([]JSONTLSVersionInfo, 0, len(tr.Versions)),
-		MinSupported: "",
-		MaxSupported: "",
+		Host:     tr.Host,
+		Port:     tr.Port,
+		Versions: make([]JSONTLSVersionInfo, 0, len(tr.Versions)),
 	}
 
 	for _, v := range tr.Versions {
@@ -254,89 +251,15 @@ func (vr *VerificationResult) MarshalJSON() ([]byte, error) {
 
 // Helper functions
 
-func subjectToJSON(subject interface{}) JSONSubject {
-	switch s := subject.(type) {
-	case pkix.Name:
-		return JSONSubject{
-			CommonName:         s.CommonName,
-			Organization:       s.Organization,
-			OrganizationalUnit: s.OrganizationalUnit,
-			Country:            s.Country,
-			Province:           s.Province,
-			Locality:           s.Locality,
-			StreetAddress:      s.StreetAddress,
-			PostalCode:         s.PostalCode,
-		}
-	default:
-		return JSONSubject{}
+func subjectToJSON(s pkix.Name) JSONSubject {
+	return JSONSubject{
+		CommonName:         s.CommonName,
+		Organization:       s.Organization,
+		OrganizationalUnit: s.OrganizationalUnit,
+		Country:            s.Country,
+		Province:           s.Province,
+		Locality:           s.Locality,
+		StreetAddress:      s.StreetAddress,
+		PostalCode:         s.PostalCode,
 	}
-}
-
-func getKeyUsageStrings(usage x509.KeyUsage) []string {
-	var usages []string
-
-	if usage&x509.KeyUsageDigitalSignature != 0 {
-		usages = append(usages, "Digital Signature")
-	}
-	if usage&x509.KeyUsageContentCommitment != 0 {
-		usages = append(usages, "Content Commitment")
-	}
-	if usage&x509.KeyUsageKeyEncipherment != 0 {
-		usages = append(usages, "Key Encipherment")
-	}
-	if usage&x509.KeyUsageDataEncipherment != 0 {
-		usages = append(usages, "Data Encipherment")
-	}
-	if usage&x509.KeyUsageKeyAgreement != 0 {
-		usages = append(usages, "Key Agreement")
-	}
-	if usage&x509.KeyUsageCertSign != 0 {
-		usages = append(usages, "Certificate Sign")
-	}
-	if usage&x509.KeyUsageCRLSign != 0 {
-		usages = append(usages, "CRL Sign")
-	}
-	if usage&x509.KeyUsageEncipherOnly != 0 {
-		usages = append(usages, "Encipher Only")
-	}
-	if usage&x509.KeyUsageDecipherOnly != 0 {
-		usages = append(usages, "Decipher Only")
-	}
-
-	return usages
-}
-
-func getExtKeyUsageStrings(usage []x509.ExtKeyUsage) []string {
-	var usages []string
-
-	for _, u := range usage {
-		switch u {
-		case x509.ExtKeyUsageAny:
-			usages = append(usages, "Any")
-		case x509.ExtKeyUsageServerAuth:
-			usages = append(usages, "Server Authentication")
-		case x509.ExtKeyUsageClientAuth:
-			usages = append(usages, "Client Authentication")
-		case x509.ExtKeyUsageCodeSigning:
-			usages = append(usages, "Code Signing")
-		case x509.ExtKeyUsageEmailProtection:
-			usages = append(usages, "Email Protection")
-		case x509.ExtKeyUsageIPSECEndSystem:
-			usages = append(usages, "IPSec End System")
-		case x509.ExtKeyUsageIPSECTunnel:
-			usages = append(usages, "IPSec Tunnel")
-		case x509.ExtKeyUsageIPSECUser:
-			usages = append(usages, "IPSec User")
-		case x509.ExtKeyUsageTimeStamping:
-			usages = append(usages, "Time Stamping")
-		case x509.ExtKeyUsageOCSPSigning:
-			usages = append(usages, "OCSP Signing")
-		case x509.ExtKeyUsageMicrosoftServerGatedCrypto:
-			usages = append(usages, "Microsoft Server Gated Crypto")
-		case x509.ExtKeyUsageNetscapeServerGatedCrypto:
-			usages = append(usages, "Netscape Server Gated Crypto")
-		}
-	}
-
-	return usages
 }

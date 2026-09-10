@@ -48,9 +48,7 @@ Examples:
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if csrCN == "" {
 			err := fmt.Errorf("common name (--cn) is required")
-			if jsonOutput {
-				printJSONError(err)
-			}
+			reportError(cmd, err)
 			return err
 		}
 
@@ -63,7 +61,7 @@ Examples:
 			Province:           csrState,
 			Locality:           csrLocality,
 			EmailAddress:       csrEmail,
-			SANs:               processSANs(csrSANs),
+			SANs:               csrSANs,
 			KeySize:            csrKeySize,
 		}
 
@@ -74,7 +72,7 @@ Examples:
 
 		// Generate CSR
 		if !jsonOutput {
-			fmt.Printf("%s Generating Certificate Signing Request...\n", getEmoji("🔐", "[CSR]"))
+			fmt.Printf("%s Generating Certificate Signing Request...\n", ui.Emoji("🔐", "[CSR]"))
 		}
 
 		csrPath := filepath.Join(csrOutput, sanitizeFilename(csrCN)+".csr")
@@ -83,9 +81,7 @@ Examples:
 		err := cert.GenerateCSR(options, csrPath, keyPath)
 		if err != nil {
 			err = fmt.Errorf("failed to generate CSR: %w", err)
-			if jsonOutput {
-				printJSONError(err)
-			}
+			reportError(cmd, err)
 			return err
 		}
 
@@ -101,18 +97,18 @@ Examples:
 		// Display success message
 		ui.ShowSuccess("Certificate Signing Request generated successfully!")
 		fmt.Println()
-		fmt.Printf("%s Files created:\n", getEmoji("📁", "[FILES]"))
-		fmt.Printf("  %s CSR:         %s\n", getEmoji("📄", "[CSR]"), csrPath)
-		fmt.Printf("  %s Private Key: %s\n", getEmoji("🔑", "[KEY]"), keyPath)
+		fmt.Printf("%s Files created:\n", ui.Emoji("📁", "[FILES]"))
+		fmt.Printf("  %s CSR:         %s\n", ui.Emoji("📄", "[CSR]"), csrPath)
+		fmt.Printf("  %s Private Key: %s\n", ui.Emoji("🔑", "[KEY]"), keyPath)
 		fmt.Println()
-		fmt.Printf("%s Next steps:\n", getEmoji("📋", "[NEXT]"))
+		fmt.Printf("%s Next steps:\n", ui.Emoji("📋", "[NEXT]"))
 		fmt.Println("  1. Submit the CSR to your Certificate Authority")
 		fmt.Println("  2. Keep the private key secure - you'll need it with the signed certificate")
 		fmt.Println("  3. Once you receive the signed certificate, install it with the private key")
 
 		// Optionally display the CSR details
 		fmt.Println()
-		fmt.Printf("%s CSR Details:\n", getEmoji("🔍", "[INFO]"))
+		fmt.Printf("%s CSR Details:\n", ui.Emoji("🔍", "[INFO]"))
 		if err := displayCSRInfo(csrPath); err != nil {
 			ui.ShowInfo(fmt.Sprintf("Could not display CSR details: %v", err))
 		}
@@ -152,24 +148,19 @@ func displayCSRInfo(csrPath string) error {
 	return nil
 }
 
-func sanitizeFilename(name string) string {
-	// Replace problematic characters with underscores
-	replacer := strings.NewReplacer(
-		"/", "_",
-		"\\", "_",
-		":", "_",
-		"*", "_",
-		"?", "_",
-		"\"", "_",
-		"<", "_",
-		">", "_",
-		"|", "_",
-		" ", "_",
-	)
-	return replacer.Replace(name)
-}
+var filenameSanitizer = strings.NewReplacer(
+	"/", "_",
+	"\\", "_",
+	":", "_",
+	"*", "_",
+	"?", "_",
+	"\"", "_",
+	"<", "_",
+	">", "_",
+	"|", "_",
+	" ", "_",
+)
 
-func processSANs(sans []string) []string {
-	// Just return the SANs as-is, they'll be processed in the cert package
-	return sans
+func sanitizeFilename(name string) string {
+	return filenameSanitizer.Replace(name)
 }

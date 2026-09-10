@@ -1,16 +1,16 @@
 package cmd
 
 import (
-    "fmt"
-    "os"
-    "strconv"
-    "strings"
-    "time"
+	"fmt"
+	"os"
+	"strconv"
+	"strings"
+	"time"
 
-    "certwiz/pkg/cert"
-    "certwiz/pkg/ui"
+	"certwiz/pkg/cert"
+	"certwiz/pkg/ui"
 
-    "github.com/spf13/cobra"
+	"github.com/spf13/cobra"
 )
 
 var (
@@ -21,8 +21,8 @@ var (
 )
 
 var verifyCmd = &cobra.Command{
-    Use:   "verify [certificate]",
-    Short: "Verify a certificate",
+	Use:   "verify [certificate]",
+	Short: "Verify a certificate",
 	Long: `Verify a certificate's validity, expiration, and optionally check
 hostname matching, CA chain validation, private key matching, and
 upcoming expiry.
@@ -34,62 +34,50 @@ Examples:
   cert verify server.crt --key server.key
   cert verify cert.pem --expires-in 30d`,
 	Args: cobra.ExactArgs(1),
-    RunE: func(cmd *cobra.Command, args []string) error {
-        certPath := args[0]
+	RunE: func(cmd *cobra.Command, args []string) error {
+		certPath := args[0]
 
 		// Check if certificate file exists
-        if _, err := os.Stat(certPath); os.IsNotExist(err) {
-            err := fmt.Errorf("certificate file does not exist: %s", certPath)
-            if jsonOutput {
-                printJSONError(err)
-            } else {
-                ui.ShowError(err.Error())
-            }
-            return err
-        }
+		if _, err := os.Stat(certPath); os.IsNotExist(err) {
+			err := fmt.Errorf("certificate file does not exist: %s", certPath)
+			reportError(cmd, err)
+			return err
+		}
 
-        expiresIn, err := parseExpiryWindow(verifyExpiresIn)
-        if err != nil {
-            if jsonOutput {
-                printJSONError(err)
-            } else {
-                ui.ShowError(err.Error())
-            }
-            return err
-        }
+		expiresIn, err := parseExpiryWindow(verifyExpiresIn)
+		if err != nil {
+			reportError(cmd, err)
+			return err
+		}
 
 		if !jsonOutput {
 			ui.ShowInfo("Verifying certificate...")
 		}
 
-        result, err := cert.VerifyWithOptions(cert.VerifyOptions{
-            CertPath:  certPath,
-            CAPath:    verifyCA,
-            Hostname:  verifyHost,
-            KeyPath:   verifyKey,
-            ExpiresIn: expiresIn,
-        })
-        if err != nil {
-            if jsonOutput {
-                printJSONError(err)
-            } else {
-                ui.ShowError(err.Error())
-            }
-            return err
-        }
+		result, err := cert.VerifyWithOptions(cert.VerifyOptions{
+			CertPath:  certPath,
+			CAPath:    verifyCA,
+			Hostname:  verifyHost,
+			KeyPath:   verifyKey,
+			ExpiresIn: expiresIn,
+		})
+		if err != nil {
+			reportError(cmd, err)
+			return err
+		}
 
-        if jsonOutput {
-            printJSON(result.ToJSON())
-        } else {
-            ui.DisplayVerificationResult(result)
-        }
+		if jsonOutput {
+			printJSON(result.ToJSON())
+		} else {
+			ui.DisplayVerificationResult(result)
+		}
 
-        // Surface failure as an error to drive non-zero exit via main
-        if !result.IsValid {
-            return fmt.Errorf("verification failed")
-        }
-        return nil
-    },
+		// Surface failure as an error to drive non-zero exit via main
+		if !result.IsValid {
+			return fmt.Errorf("verification failed")
+		}
+		return nil
+	},
 }
 
 // parseExpiryWindow parses an expiry threshold like "30d", "30" (days),

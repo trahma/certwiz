@@ -72,6 +72,7 @@ func TestGenerateCommand(t *testing.T) {
 
 			// Create new root command for each test
 			cmd := rootCmd
+			resetCommandFlags(t, cmd)
 			cmd.SetArgs(tt.args)
 
 			// Capture output

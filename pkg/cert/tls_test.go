@@ -8,9 +8,9 @@ import (
 func TestTLSVersionConstants(t *testing.T) {
 	// Test that TLS version constants match expected values
 	tests := []struct {
-		version   TLSVersion
-		expected  uint16
-		name      string
+		version  TLSVersion
+		expected uint16
+		name     string
 	}{
 		{TLSVersionTLS10, 0x0301, "TLS 1.0"},
 		{TLSVersionTLS11, 0x0302, "TLS 1.1"},

@@ -17,6 +17,7 @@ import (
 	"testing"
 	"time"
 
+	"certwiz/internal/config"
 	"certwiz/pkg/cert"
 )
 
@@ -179,7 +180,7 @@ func TestFormatSANs(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := formatSANs(tt.sans)
+			result := formatSANs(tt.sans, tt.maxWidth)
 
 			// Check that result contains all SANs
 			for _, san := range tt.sans {
@@ -248,9 +249,22 @@ func TestFormatStatus(t *testing.T) {
 }
 
 func TestShowError(t *testing.T) {
-	output := captureOutput(func() {
+	// Errors go to stderr so they survive stdout redirection.
+	old := os.Stderr
+	r, w, _ := os.Pipe()
+	os.Stderr = w
+	stdout := captureOutput(func() {
 		ShowError("test error message")
 	})
+	_ = w.Close()
+	os.Stderr = old
+	var buf bytes.Buffer
+	_, _ = io.Copy(&buf, r)
+	output := buf.String()
+
+	if stdout != "" {
+		t.Errorf("ShowError must not write to stdout, got %q", stdout)
+	}
 
 	if !strings.Contains(output, "Error") {
 		t.Error("Output should contain 'Error'")
@@ -583,7 +597,7 @@ func TestGetPolicyName(t *testing.T) {
 	}
 }
 
-func TestIsExtensionCritical(t *testing.T) {
+func TestCriticalExtensions(t *testing.T) {
 	oid1 := "2.5.29.15"
 	oid2 := "2.5.29.17"
 
@@ -602,16 +616,66 @@ func TestIsExtensionCritical(t *testing.T) {
 		},
 	}
 
-	if !isExtensionCritical(x509Cert, oid1) {
+	critical := criticalExtensions(x509Cert)
+
+	if !critical[oid1] {
 		t.Errorf("Extension %s should be critical", oid1)
 	}
 
-	if isExtensionCritical(x509Cert, oid2) {
+	if critical[oid2] {
 		t.Errorf("Extension %s should not be critical", oid2)
 	}
 
-	if isExtensionCritical(x509Cert, "1.2.3.4") {
+	if critical["1.2.3.4"] {
 		t.Error("Non-existent extension should not be critical")
+	}
+}
+
+func TestFormatTableIndentsContinuationLines(t *testing.T) {
+	SetConfig(&config.Config{}) // plain: no colors, so widths are literal
+	defer SetConfig(nil)
+
+	data := [][]string{
+		{"Key", "single"},
+		{"Longer Key", "first line\nsecond line"},
+	}
+
+	lines := strings.Split(formatTable(data), "\n")
+	if len(lines) != 3 {
+		t.Fatalf("Expected 3 lines, got %d: %q", len(lines), lines)
+	}
+
+	valueCol := len("Longer Key") + len(": ")
+	if got := lines[1][valueCol:]; got != "first line" {
+		t.Errorf("First value line should start at column %d, got %q", valueCol, lines[1])
+	}
+	want := strings.Repeat(" ", valueCol) + "second line"
+	if lines[2] != want {
+		t.Errorf("Continuation line should be indented to the value column:\n got %q\nwant %q", lines[2], want)
+	}
+}
+
+func TestWrapFingerprint(t *testing.T) {
+	fp := "09:AA:46:BE:DB:56:C6:56:FB:4E:06:A7:B0:E8:B6:AB:F1:84:B9:71:08:18:84:CA:F2:58:84:1B:F9:04:99:1F"
+
+	if got := wrapFingerprint(fp, 200); got != fp {
+		t.Errorf("Fingerprint that fits should be unchanged, got %q", got)
+	}
+
+	lines := strings.Split(wrapFingerprint(fp, 30), "\n")
+	if len(lines) < 2 {
+		t.Fatalf("Expected wrapping, got %q", lines)
+	}
+	for _, line := range lines {
+		if len(line) > 30 {
+			t.Errorf("Line exceeds width: %q", line)
+		}
+		if strings.HasPrefix(line, " ") || strings.HasSuffix(line, ":") {
+			t.Errorf("Line should have no indent or trailing colon: %q", line)
+		}
+	}
+	if strings.ReplaceAll(strings.Join(lines, ":"), ":", "") != strings.ReplaceAll(fp, ":", "") {
+		t.Error("Wrapped fingerprint lost bytes")
 	}
 }
 
@@ -637,7 +701,7 @@ func BenchmarkFormatSANs(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_ = formatSANs(sans)
+		_ = formatSANs(sans, 60)
 	}
 }
 
@@ -652,5 +716,17 @@ func BenchmarkFormatSubject(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_ = formatSubject(subject)
+	}
+}
+
+func TestShowErrorTo(t *testing.T) {
+	var buf bytes.Buffer
+	ShowErrorTo(&buf, "custom sink")
+
+	if !strings.Contains(buf.String(), "Error: custom sink") {
+		t.Errorf("ShowErrorTo should write the styled message to the writer, got %q", buf.String())
+	}
+	if !strings.HasSuffix(buf.String(), "\n") {
+		t.Error("ShowErrorTo should end the message with a newline")
 	}
 }

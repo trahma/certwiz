@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"fmt"
 	"net"
 	"strconv"
 	"strings"
@@ -15,7 +14,7 @@ import (
 
 var (
 	tlsPort    int
-	tlsTimeout string
+	tlsTimeout time.Duration
 )
 
 var tlsCmd = &cobra.Command{
@@ -54,24 +53,10 @@ Examples:
 			}
 		}
 
-		// Determine timeout
-		timeout := 5 * time.Second
-		if tlsTimeout != "" {
-			d, err := time.ParseDuration(tlsTimeout)
-			if err != nil {
-				return fmt.Errorf("invalid --timeout value %q: %w", tlsTimeout, err)
-			}
-			timeout = d
-		}
-
 		// Test TLS versions
-		result, err := cert.CheckTLSVersions(host, port, timeout)
+		result, err := cert.CheckTLSVersions(host, port, tlsTimeout)
 		if err != nil {
-			if jsonOutput {
-				printJSONError(err)
-			} else {
-				ui.ShowError(err.Error())
-			}
+			reportError(cmd, err)
 			return err
 		}
 
@@ -87,7 +72,7 @@ Examples:
 
 func init() {
 	tlsCmd.Flags().IntVar(&tlsPort, "port", 443, "Port for TLS testing")
-	tlsCmd.Flags().StringVar(&tlsTimeout, "timeout", "5s", "Network timeout (e.g., 5s, 2s)")
+	tlsCmd.Flags().DurationVar(&tlsTimeout, "timeout", 5*time.Second, "Network timeout (e.g., 5s, 2s)")
 
 	rootCmd.AddCommand(tlsCmd)
 }
