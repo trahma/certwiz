@@ -1,22 +1,22 @@
 # Installation Guide
 
-certwiz can be installed in several ways depending on your needs and environment.
+certwiz can be installed in several ways depending on your needs and environment. The installed command is named `cert`.
 
 ## Prerequisites
 
-- Terminal with UTF-8 support (for emoji and special characters)
 - macOS, Linux, FreeBSD, or Windows
-- `curl` and `tar` (for automatic installation)
+- A terminal with UTF-8 support for the default bordered output (use `--plain` otherwise)
+- `curl` and `tar` (for the installer script and manual downloads)
 - Go 1.20 or higher (only for building from source)
 
 ## Installation Methods
 
-### 1. Quick Install Script (Recommended) 🚀
+### 1. Quick Install Script (Recommended)
 
-The easiest way to install certwiz is using our automatic installer script. It detects your OS and architecture, downloads the appropriate binary, and installs it for you.
+The installer detects your OS and architecture, downloads the matching release archive, and installs the `cert` binary.
 
 ```bash
-# Install latest version
+# Install the latest version
 curl -sSL https://raw.githubusercontent.com/trahma/certwiz/main/install.sh | bash
 ```
 
@@ -24,7 +24,7 @@ curl -sSL https://raw.githubusercontent.com/trahma/certwiz/main/install.sh | bas
 
 ```bash
 # Install a specific version
-curl -sSL https://raw.githubusercontent.com/trahma/certwiz/main/install.sh | bash -s -- --version v0.1.0
+curl -sSL https://raw.githubusercontent.com/trahma/certwiz/main/install.sh | bash -s -- --version v0.4.1
 
 # Install to a custom directory (e.g., for non-root users)
 curl -sSL https://raw.githubusercontent.com/trahma/certwiz/main/install.sh | bash -s -- --install-dir $HOME/.local/bin
@@ -34,90 +34,103 @@ curl -sSL https://raw.githubusercontent.com/trahma/certwiz/main/install.sh | bas
 ```
 
 The installer:
-- ✅ Automatically detects your OS (macOS, Linux, FreeBSD)
-- ✅ Automatically detects your architecture (amd64, arm64, 386)
-- ✅ Downloads the correct binary from GitHub releases
-- ✅ Installs to `/usr/local/bin` (or custom directory)
-- ✅ Verifies the installation
-- ✅ Provides PATH configuration help if needed
+- Detects your OS (macOS, Linux, FreeBSD)
+- Detects your architecture (x86_64, arm64, armv7, i386)
+- Downloads the matching archive from GitHub releases
+- Installs to `/usr/local/bin` (or the directory given with `--install-dir`)
+- Verifies the installation
+- Explains how to update your PATH if needed
 
 ### 2. Manual Download
 
-Download pre-built binaries from the [releases page](https://github.com/trahma/certwiz/releases).
+Download a pre-built archive from the [releases page](https://github.com/trahma/certwiz/releases). Archives are named `cert-<os>-<arch>.tar.gz` (`.zip` on Windows) and each contains a single binary named `cert` (or `cert.exe`) alongside the README, CHANGELOG, and LICENSE.
 
-#### macOS (Apple Silicon - M1/M2/M3)
+Available builds:
+
+| OS | Architectures |
+|----|---------------|
+| macOS (`darwin`) | `arm64` (Apple Silicon), `x86_64` (Intel) |
+| Linux | `x86_64`, `arm64`, `armv7`, `i386` |
+| FreeBSD | `x86_64`, `arm64` |
+| Windows | `x86_64`, `arm64`, `i386` |
+
+#### macOS (Apple Silicon)
 ```bash
-curl -L https://github.com/trahma/certwiz/releases/latest/download/cert-darwin-arm64.tar.gz | tar xz
-sudo mv cert-darwin-arm64 /usr/local/bin/cert
-chmod +x /usr/local/bin/cert
+curl -L https://github.com/trahma/certwiz/releases/latest/download/cert-darwin-arm64.tar.gz | tar xz cert
+sudo mv cert /usr/local/bin/cert
 ```
 
 #### macOS (Intel)
 ```bash
-curl -L https://github.com/trahma/certwiz/releases/latest/download/cert-darwin-amd64.tar.gz | tar xz
-sudo mv cert-darwin-amd64 /usr/local/bin/cert
-chmod +x /usr/local/bin/cert
+curl -L https://github.com/trahma/certwiz/releases/latest/download/cert-darwin-x86_64.tar.gz | tar xz cert
+sudo mv cert /usr/local/bin/cert
 ```
 
 #### Linux (x86_64)
 ```bash
-curl -L https://github.com/trahma/certwiz/releases/latest/download/cert-linux-amd64.tar.gz | tar xz
-sudo mv cert-linux-amd64 /usr/local/bin/cert
-chmod +x /usr/local/bin/cert
+curl -L https://github.com/trahma/certwiz/releases/latest/download/cert-linux-x86_64.tar.gz | tar xz cert
+sudo mv cert /usr/local/bin/cert
 ```
 
-#### Linux (ARM64)
+#### Linux (arm64)
 ```bash
-curl -L https://github.com/trahma/certwiz/releases/latest/download/cert-linux-arm64.tar.gz | tar xz
-sudo mv cert-linux-arm64 /usr/local/bin/cert
-chmod +x /usr/local/bin/cert
+curl -L https://github.com/trahma/certwiz/releases/latest/download/cert-linux-arm64.tar.gz | tar xz cert
+sudo mv cert /usr/local/bin/cert
+```
+
+For `armv7` or `i386`, substitute the architecture in the file name.
+
+#### FreeBSD
+```bash
+curl -L https://github.com/trahma/certwiz/releases/latest/download/cert-freebsd-x86_64.tar.gz | tar xz cert
+sudo mv cert /usr/local/bin/cert
 ```
 
 #### Windows
 Download the appropriate `.zip` file from the [releases page](https://github.com/trahma/certwiz/releases):
-- `cert-windows-amd64.zip` for 64-bit systems
+- `cert-windows-x86_64.zip` for 64-bit systems
 - `cert-windows-arm64.zip` for ARM64 systems
-- `cert-windows-386.zip` for 32-bit systems
+- `cert-windows-i386.zip` for 32-bit systems
 
-Extract and add `cert.exe` to your PATH.
+Extract `cert.exe` and add its directory to your PATH. Note that `cert update` is not available on Windows; download a new release to upgrade.
 
-### 3. Install with Go
+#### Verifying a Download
 
-If you have Go 1.20+ installed:
+Every release publishes a `checksums.txt` with SHA-256 sums for all archives:
 
 ```bash
-go install github.com/trahma/certwiz@latest
+VERSION=v0.4.1
+curl -LO https://github.com/trahma/certwiz/releases/download/$VERSION/cert-darwin-arm64.tar.gz
+curl -LO https://github.com/trahma/certwiz/releases/download/$VERSION/checksums.txt
+shasum -a 256 --ignore-missing -c checksums.txt   # on Linux: sha256sum --ignore-missing -c checksums.txt
 ```
 
-This installs the `cert` binary to your `$GOPATH/bin` directory.
+### 3. Build from Source
 
-### 4. Build from Source
-
-Clone the repository and build:
+`go install` is not supported: the module is declared as `certwiz` in `go.mod`, not as its GitHub path. Clone and build instead:
 
 ```bash
 git clone https://github.com/trahma/certwiz
 cd certwiz
-make build
+make build          # produces ./cert
+make install        # installs to $GOPATH/bin
 ```
 
-Or using Go directly:
+Or with Go directly:
 
 ```bash
-git clone https://github.com/trahma/certwiz
-cd certwiz
 go build -o cert .
 ```
 
 ## Verification
 
-After installation, verify certwiz is working:
+After installation, check that `cert` is on your PATH and reports its version:
 
 ```bash
-# Check version
 cert version
+# cert version 0.4.1
 
-# Test with a simple command
+# Try a simple command
 cert inspect google.com
 ```
 
@@ -153,39 +166,25 @@ cert completion powershell >> $PROFILE
 
 ## Updating
 
-### Automatic Update (Recommended) 🔄
-
-The easiest way to update cert is using the built-in update command:
+### Automatic Update (macOS, Linux, FreeBSD)
 
 ```bash
-# Check for and install updates
+# Download the installer and upgrade in place if a newer release exists
 cert update
 
-# Force reinstall current version (useful for fixing corrupted installations)
+# Reinstall even if already on the latest version
 cert update --force
 ```
 
-The update command will:
-- ✅ Check for the latest version
-- ✅ Compare with your current version
-- ✅ Download and install if an update is available
-- ✅ Automatically detect your installation location
-- ✅ Create a backup of the current binary
+The command downloads the installer script to a temporary file, runs it, and removes the file when the installer exits. The installer compares the latest release with your current version and upgrades your existing installation in place.
 
 ### Using the installer script
 ```bash
 # Update to latest version
 curl -sSL https://raw.githubusercontent.com/trahma/certwiz/main/install.sh | bash
 
-# Update to specific version
-curl -sSL https://raw.githubusercontent.com/trahma/certwiz/main/install.sh | bash -s -- --version v0.2.0
-```
-
-The installer will automatically detect your existing installation and upgrade it in place.
-
-### If installed with Go
-```bash
-go install github.com/trahma/certwiz@latest
+# Update to a specific version
+curl -sSL https://raw.githubusercontent.com/trahma/certwiz/main/install.sh | bash -s -- --version v0.4.1
 ```
 
 ### If built from source
@@ -200,11 +199,11 @@ make clean build
 ### If installed with the installer script or manually
 ```bash
 sudo rm /usr/local/bin/cert
-# Or from custom location:
+# Or from a custom location:
 rm $HOME/.local/bin/cert
 ```
 
-### If installed with Go
+### If installed with `make install`
 ```bash
 rm $(go env GOPATH)/bin/cert
 ```
@@ -226,7 +225,7 @@ If you get "command not found" after installation:
    ```
    Add this line to your shell configuration file (`~/.bashrc`, `~/.zshrc`, etc.)
 
-3. If using Go, ensure `$GOPATH/bin` is in your PATH:
+3. If installed with `make install`, ensure `$GOPATH/bin` is in your PATH:
    ```bash
    export PATH=$PATH:$(go env GOPATH)/bin
    ```
@@ -234,17 +233,17 @@ If you get "command not found" after installation:
 ### Permission denied
 
 If you get permission errors when installing to `/usr/local/bin`:
-- Use the installer script which handles sudo automatically
+- Use the installer script, which handles sudo automatically
 - Or use a user directory:
   ```bash
   curl -sSL https://raw.githubusercontent.com/trahma/certwiz/main/install.sh | bash -s -- --install-dir $HOME/.local/bin
   ```
 
-### Colors not displaying
+### Colors or borders not displaying
 
-If colors aren't showing properly:
-- Ensure your terminal supports 256 colors
+- Ensure your terminal supports 256 colors and UTF-8
 - Try setting: `export TERM=xterm-256color`
+- Use `--plain` for output without borders, colors, or symbols
 - On Windows, use Windows Terminal or PowerShell 7+
 
 ## Next Steps

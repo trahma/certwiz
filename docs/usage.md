@@ -1,15 +1,22 @@
 # Usage Guide
 
 This guide covers the basic usage of certwiz commands with practical examples.
+For every flag and default, see the [Command Reference](commands.md).
 
-## Basic Commands
+## Commands
 
-certwiz has five main commands:
-- `inspect` - View certificate information
-- `generate` - Create certificates
-- `convert` - Convert between formats
+- `inspect` - View certificate information from a file, stdin, or a live server
+- `generate` - Create a self-signed certificate
+- `csr` - Create a Certificate Signing Request and key
+- `ca` - Create a Certificate Authority
+- `sign` - Sign a CSR with your CA
+- `convert` - Convert between PEM and DER
 - `verify` - Validate certificates
 - `tls` - Test TLS version support
+- `update` - Update cert to the latest release
+
+Every command accepts `--json` for machine-readable output and `--plain` for
+output without borders, colors, or emojis.
 
 ## Inspecting Certificates
 
@@ -25,6 +32,8 @@ Output shows:
 - Subject and Issuer
 - Validity dates and expiration status
 - Public key type and signature algorithm
+- SHA-256 and SHA-1 fingerprints
+- Negotiated TLS version and cipher suite
 - Subject Alternative Names (SANs)
 
 ### Inspect a Certificate File
@@ -33,11 +42,31 @@ Output shows:
 # PEM format
 cert inspect server.crt
 
-# DER format  
+# DER format
 cert inspect certificate.der
 
-# Automatic format detection
+# Format is detected from the content, not the extension
 cert inspect mycert.pem
+```
+
+If a path-like argument does not exist (for example `./sever.crt` with a
+typo), cert reports a missing file instead of trying it as a hostname.
+
+### Bundles and stdin
+
+A file may contain several certificates, such as the `fullchain.pem` that
+ACME clients produce. The first certificate is shown; add `--chain` to see
+the rest:
+
+```bash
+cert inspect fullchain.pem --chain
+```
+
+Use `-` to read from stdin, which pairs well with openssl or curl:
+
+```bash
+openssl s_client -connect example.com:443 </dev/null 2>/dev/null | cert inspect -
+curl -s https://example.com/ca.pem | cert inspect -
 ```
 
 ### Custom Ports
@@ -52,7 +81,7 @@ cert inspect example.com --port 8443
 
 ### View Certificate Chain
 
-See the complete trust chain:
+See the complete trust chain as presented by the server:
 
 ```bash
 cert inspect github.com --chain
@@ -61,7 +90,7 @@ cert inspect github.com --chain
 This shows:
 - Server certificate
 - Intermediate certificates
-- Path to root CA
+- The root, if the server sends it
 
 ### Detailed Extension Information
 
@@ -76,8 +105,9 @@ Shows:
 - Extended Key Usage
 - Basic Constraints
 - Authority Info Access URLs
+- CRL Distribution Points
 - Certificate Policies
-- And more...
+- Any other extensions, with `[CRITICAL]` markers
 
 ### Combine Options
 
@@ -87,13 +117,17 @@ cert inspect example.com --full --chain
 
 # Check a specific port with full details
 cert inspect api.example.com:8443 --full
+
+# Give a slow server more time
+cert inspect slow.example.com --timeout 15s
 ```
 
 ### Advanced Inspection Options
 
 #### Inspect Through Proxy or Tunnel
 
-Connect to a different host while validating the certificate for the target:
+Connect to a different host while requesting the certificate for the target
+hostname (SNI):
 
 ```bash
 # Through SSH tunnel
@@ -121,7 +155,8 @@ cert inspect cloudflare.com --sig-alg rsa
 cert inspect cloudflare.com --sig-alg auto
 ```
 
-**Note**: The `--sig-alg` flag only works with TLS 1.2 and below. TLS 1.3 handles certificate selection differently.
+Note: `ecdsa` and `rsa` cap the connection at TLS 1.2, because TLS 1.3 does
+not select certificates by cipher suite.
 
 ## Generating Certificates
 
@@ -133,9 +168,7 @@ cert generate --cn myapp.local
 
 Creates:
 - `myapp.local.crt` - Certificate file
-- `myapp.local.key` - Private key file
-
-Note: On Unix-like systems, private keys are created with `0600` permissions.
+- `myapp.local.key` - Private key file, written with `0600` permissions
 
 ### With Subject Alternative Names (SANs)
 
@@ -147,6 +180,9 @@ cert generate --cn myapp.local \
   --san IP:127.0.0.1 \
   --san IP:192.168.1.100
 ```
+
+IP addresses need the `IP:` prefix; without it the value is treated as a DNS
+name.
 
 ### Custom Validity Period
 
@@ -174,6 +210,33 @@ cert generate --cn myapp.local --key-size 2048
 cert generate --cn myapp.local --output /etc/ssl/certs/
 ```
 
+## Running Your Own CA
+
+Create a CA once, then sign CSRs with it. This is the usual path for internal
+services and development environments where browsers and clients can be told
+to trust your CA.
+
+```bash
+# 1. Create the CA (key size defaults to 4096, validity to 10 years)
+cert ca --cn "Example Internal CA" --org "Example Corp"
+
+# 2. Create a CSR and key for a service
+cert csr --cn api.internal.example --san api.internal.example --san IP:10.0.0.5
+
+# 3. Sign it
+cert sign --csr api.internal.example.csr \
+  --ca Example_Internal_CA-ca.crt \
+  --ca-key Example_Internal_CA-ca.key \
+  --days 365
+
+# 4. Check the result against the CA
+cert verify api.internal.example.crt --ca Example_Internal_CA-ca.crt --host api.internal.example
+```
+
+Spaces and other unsafe characters in the CA name become `_` in the file
+names. `csr` and `sign` accept `email:` and `uri:` SANs as well as DNS and
+`IP:` entries.
+
 ## Converting Certificates
 
 ### PEM to DER
@@ -188,17 +251,18 @@ cert convert certificate.pem certificate.der --format der
 cert convert certificate.der certificate.pem --format pem
 ```
 
-### Auto-detect Input Format
+### Input Format Detection and Bundles
 
-certwiz automatically detects the input format:
+The input format is detected from the content, so any extension works:
 
 ```bash
-# Converts to DER if input is PEM
 cert convert input.crt output.der --format der
-
-# Converts to PEM if input is DER
 cert convert input.der output.pem --format pem
 ```
+
+PEM output keeps every certificate in a bundle. DER holds a single
+certificate, so converting a bundle to DER is an error; split the bundle
+first if you need DER.
 
 ## Verifying Certificates
 
@@ -208,10 +272,8 @@ cert convert input.der output.pem --format pem
 cert verify server.crt
 ```
 
-Checks:
-- Certificate validity dates
-- Certificate structure
-- Basic constraints
+Checks that the file parses and that the certificate is within its validity
+period.
 
 ### Verify Against Hostname
 
@@ -219,9 +281,8 @@ Checks:
 cert verify server.crt --host example.com
 ```
 
-Verifies:
-- Hostname matches CN or SANs
-- Certificate is valid for the specified domain
+Verifies that the hostname matches the certificate's SANs (or Common Name
+for legacy certificates), including wildcards.
 
 ### Verify Against CA
 
@@ -229,47 +290,143 @@ Verifies:
 cert verify server.crt --ca ca-bundle.crt
 ```
 
-Validates:
-- Certificate chain
-- Signature verification
-- Trust path to CA
+Validates that a trust chain can be built to a certificate in the CA file.
+The CA file may be PEM (including a bundle) or DER.
+
+### Check the Private Key Matches
+
+```bash
+cert verify server.crt --key server.key
+```
+
+Confirms the key belongs to the certificate. PKCS#8, PKCS#1 (RSA), and SEC1
+(EC) keys are accepted, PEM or DER encoded.
+
+### Fail Before Expiry
+
+```bash
+# Exit 1 if the certificate expires within 30 days
+cert verify server.crt --expires-in 30d
+```
+
+Accepts days (`30d` or `30`) or any Go duration (`720h`). This is the
+building block for renewal alerts in CI and cron.
 
 ### Combined Verification
 
 ```bash
 cert verify server.crt \
   --host api.example.com \
-  --ca /etc/ssl/certs/ca-bundle.crt
+  --ca /etc/ssl/certs/ca-bundle.crt \
+  --key server.key \
+  --expires-in 14d
+```
+
+Any failing check makes the command exit 1.
+
+## Testing TLS Versions
+
+### Check Supported TLS Versions
+
+```bash
+cert tls google.com
+cert tls https://example.com
+```
+
+This shows:
+- Which of TLS 1.0, 1.1, 1.2, and 1.3 are supported, with the cipher suite negotiated for each
+- Minimum and maximum supported versions
+- A security warning if TLS 1.0 or 1.1 is still enabled
+
+The four versions are probed concurrently, and a version that fails while
+others succeed is retried once, so a busy server is not misreported.
+
+### Custom Port and Timeout
+
+```bash
+# Test non-standard port
+cert tls api.example.com:8443
+
+# With custom timeout (applies to each handshake)
+cert tls slow-server.example.com --timeout 10s
+```
+
+### JSON Output for Scripts
+
+```bash
+# Get structured data
+cert tls example.com --json | jq .
+
+# Print the newest supported version
+cert tls example.com --json | jq -r '.max_supported'
+
+# Fail if deprecated versions are enabled
+cert tls example.com --json \
+  | jq -e '[.versions[] | select(.name == "TLS 1.0" or .name == "TLS 1.1") | .supported] | any' >/dev/null \
+  && echo "FAIL: deprecated TLS enabled"
 ```
 
 ## Understanding the Output
 
 ### Color Coding
 
-certwiz uses colors to highlight important information:
+- Green: valid, healthy, good
+- Yellow: warning, expiring soon (less than 30 days)
+- Red: error, expired, critical issue
+- Blue: informational, neutral
 
-- 🟢 **Green**: Valid, healthy, good
-- 🟡 **Yellow**: Warning, expiring soon (< 30 days)
-- 🔴 **Red**: Error, expired, critical issue
-- 🔵 **Blue**: Informational, neutral
+Borders are colored by the certificate's status, so an expired certificate's
+panel is red.
 
 ### Status Messages
 
 ```
 Valid (365 days remaining)         # Healthy certificate
 EXPIRING SOON (15 days remaining)  # Needs renewal soon
-EXPIRED (10 days ago)               # Certificate has expired
+EXPIRED (10 days ago)              # Certificate has expired
 ```
 
-### Icons and Symbols
+### Symbols
 
-- ✓ Enabled/Valid/Success
-- ✗ Disabled/Invalid/Failed
-- → Indicates a value or detail
-- 🔗 Clickable URL or link
-- [CRITICAL] Extension that must be understood
+In a normal terminal, checks are shown with a check mark, failures with a
+cross, and details with an arrow. In CI environments and with `--plain`
+these become `[OK]`, `[X]`, and `->` so the output is safe to copy and grep.
+Extensions that must be understood by a client are marked `[CRITICAL]`.
 
-## Tips and Tricks
+### Plain Mode and Configuration
+
+Use `--plain` for output without borders, colors, or emojis:
+
+```bash
+cert inspect google.com --plain
+cert tls github.com --plain
+```
+
+To make that the default, or to turn off only some decoration, create
+`~/.config/certwiz/config.yaml` (or `~/.certwiz.yaml`):
+
+```yaml
+output:
+  plain: false
+  borders: true
+  colors: true
+  emojis: true
+```
+
+`--plain` overrides the config file, which overrides CI detection.
+
+### Errors and Exit Codes
+
+Every command exits 0 on success and 1 on failure. Human-readable errors go
+to stderr; with `--json` the error is a JSON object on stdout:
+
+```bash
+cert inspect missing.pem
+# stderr: Error: certificate file does not exist: missing.pem
+
+cert inspect missing.pem --json
+# stdout: {"success": false, "error": "certificate file does not exist: missing.pem"}
+```
 
 ## JSON Output
 
@@ -279,6 +436,12 @@ Use `--json` to integrate with scripts and tools:
 # Inspect with JSON
 cert inspect google.com --json | jq '.subject.common_name'
 
+# Days until expiry
+cert inspect cert.pem --json | jq '.days_until_expiry'
+
+# Fingerprint for pinning
+cert inspect example.com --json | jq -r '.fingerprint_sha256'
+
 # Verify with JSON
 cert verify server.crt --host example.com --json | jq '.is_valid'
 
@@ -286,6 +449,7 @@ cert verify server.crt --host example.com --json | jq '.is_valid'
 cert generate --cn test.local --json | jq -r '.files[]'
 ```
 
+## Tips and Tricks
 
 ### Quick Domain Check
 
@@ -293,15 +457,14 @@ cert generate --cn test.local --json | jq -r '.files[]'
 # Check multiple domains quickly
 for domain in google.com github.com cloudflare.com; do
   echo "=== $domain ==="
-  cert inspect $domain | grep -E "Status|Valid"
+  cert inspect "$domain" --plain | grep -E "Status|Valid"
 done
 ```
 
-### Export Certificate from Website
+### Save a Report
 
 ```bash
-# Save certificate to file
-cert inspect example.com > example.com.info.txt
+cert inspect example.com --full --chain --plain > example.com.info.txt
 ```
 
 ### Check Internal Services
@@ -319,24 +482,27 @@ cert verify internal.crt --ca /path/to/internal-ca.crt
 ```bash
 # Generate certificates for multiple domains
 for domain in app1.local app2.local app3.local; do
-  cert generate --cn $domain --san $domain --san "*.$domain"
+  cert generate --cn "$domain" --san "$domain" --san "*.$domain"
 done
 ```
 
 ### Certificate Monitoring
 
 ```bash
-# Simple expiration check script
 #!/bin/bash
+# Alert when any certificate expires within 14 days
 domains=("example.com" "api.example.com" "www.example.com")
 
 for domain in "${domains[@]}"; do
-  output=$(cert inspect $domain | grep Status)
-  if [[ $output == *"EXPIRING SOON"* ]] || [[ $output == *"EXPIRED"* ]]; then
-    echo "ALERT: $domain - $output"
+  days=$(cert inspect "$domain" --json | jq '.days_until_expiry')
+  if [[ -z "$days" || "$days" -lt 14 ]]; then
+    echo "ALERT: $domain expires in ${days:-?} days"
   fi
 done
 ```
+
+For certificates on disk, `cert verify --expires-in 14d` does the same with
+an exit code and no parsing.
 
 ## Common Workflows
 
@@ -367,11 +533,14 @@ cert inspect problematic-site.com --full
 # 2. View the certificate chain
 cert inspect problematic-site.com --chain
 
-# 3. Check specific port if non-standard
+# 3. Check which TLS versions are offered
+cert tls problematic-site.com
+
+# 4. Check specific port if non-standard
 cert inspect problematic-site.com:8443
 
-# 4. Save details for analysis
-cert inspect problematic-site.com --full --chain > cert-analysis.txt
+# 5. Save details for analysis
+cert inspect problematic-site.com --full --chain --plain > cert-analysis.txt
 ```
 
 ### Certificate Renewal Process
@@ -383,71 +552,11 @@ cert inspect mysite.com
 # 2. Generate new certificate
 cert generate --cn mysite.com --san mysite.com --san www.mysite.com
 
-# 3. Verify new certificate
-cert verify mysite.com.crt --host mysite.com
+# 3. Verify new certificate and key
+cert verify mysite.com.crt --host mysite.com --key mysite.com.key
 
 # 4. Convert if needed
 cert convert mysite.com.crt mysite.com.der --format der
-```
-
-## Testing TLS Versions
-
-### Check Supported TLS Versions
-
-Test which TLS versions a server supports:
-
-```bash
-cert tls google.com
-cert tls example.com
-```
-
-This shows:
-- ✓ Supported versions (TLS 1.0, 1.1, 1.2, 1.3)
-- ✗ Unsupported versions
-- Minimum and maximum supported versions
-- Security warnings for deprecated versions
-
-### Custom Port and Timeout
-
-```bash
-# Test non-standard port
-cert tls api.example.com:8443
-
-# With custom timeout
-cert tls slow-server.example.com --timeout 10s
-```
-
-### Security Analysis
-
-The tls command identifies security issues:
-
-```bash
-# Check for deprecated TLS versions
-cert tls myserver.com
-```
-
-If TLS 1.0 or 1.1 is enabled, you'll see:
-- ⚠ Security Warning
-- Recommendation to disable deprecated versions
-
-### Use Cases
-
-- **Security audits**: Verify servers don't support TLS 1.0/1.1
-- **Compliance checks**: Ensure TLS 1.2+ support
-- **Migration testing**: Verify configuration changes
-- **Troubleshooting**: Diagnose TLS compatibility issues
-
-### JSON Output for Scripts
-
-```bash
-# Get structured data
-cert tls example.com --json | jq .
-
-# Check TLS 1.2+ support
-cert tls example.com --json | jq '.max_supported | contains("TLS 1.2")'
-
-# Fail if deprecated versions are enabled
-cert tls example.com --json | jq '.versions[] | select(.name | startswith("TLS 1.0") or startswith("TLS 1.1")) | .supported' | grep -q true && echo "FAIL: Deprecated TLS enabled"
 ```
 
 ## Next Steps

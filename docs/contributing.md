@@ -57,12 +57,12 @@ We actively welcome pull requests! Here's how:
    make build
    ```
 
-5. Add upstream remote:
+5. Add the upstream remote:
    ```bash
    git remote add upstream https://github.com/trahma/certwiz
    ```
 
-4. Create a branch:
+6. Create a branch:
    ```bash
    git checkout -b feature/your-feature-name
    ```
@@ -71,22 +71,29 @@ We actively welcome pull requests! Here's how:
 
 1. Make your changes
 2. Add tests if applicable
-3. Ensure all tests pass:
+3. Ensure all tests pass, repeatedly and with the race detector (state leaking between test cases has broken CI before):
    ```bash
-   go test ./...
+   go test -race -count=3 ./...
+   ```
+   Tests must not touch the network. Remote behaviour is tested against in-process TLS servers; see the fixtures in `pkg/cert/refactor_test.go` and `cmd/helpers_test.go`.
+
+4. Format and vet your code:
+   ```bash
+   gofmt -l .        # must print nothing
+   go vet ./...
    ```
 
-4. Format your code:
+5. Lint with the same linter CI uses (golangci-lint v2, no config file, strict `errcheck` including in tests):
    ```bash
-   go fmt ./...
+   GOFLAGS=-mod=mod go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest run --timeout=5m ./...
    ```
 
-5. Lint your code:
+6. Confirm the code still builds on the minimum Go version (CI tests Go 1.20 and 1.21; avoid `min`/`max` builtins, the `slices`/`maps`/`cmp` packages, `sync.OnceValue`, and range-over-int):
    ```bash
-   golangci-lint run
+   GOTOOLCHAIN=go1.20.14 go build ./... && GOTOOLCHAIN=go1.20.14 go test ./...
    ```
 
-6. Build and test locally:
+7. Build and test locally:
    ```bash
    make build
    ./cert inspect google.com
@@ -141,13 +148,15 @@ git commit -m "docs: update installation instructions for Windows"
 
 - Write unit tests for new functionality
 - Update existing tests when modifying code
-- Aim for good test coverage
+- Keep coverage where it is (around 95% of statements)
 - Test edge cases and error conditions
+- Never use the real network in tests; use the in-process TLS server fixtures
+- Reset package-level flag variables and output mode with `t.Cleanup` so cases do not leak into each other
 
 Example test:
 ```go
 func TestInspectFile(t *testing.T) {
-    cert, err := InspectFile("testdata/valid.pem")
+    cert, err := InspectFile(testutil.TestdataPath("valid.pem"))
     if err != nil {
         t.Fatalf("unexpected error: %v", err)
     }
@@ -177,15 +186,11 @@ func TestInspectFile(t *testing.T) {
 ```
 certwiz/
 ├── main.go              # Entry point
-├── cmd/                 # CLI commands
-│   ├── root.go         # Root command
-│   ├── inspect.go      # Inspect command
-│   ├── generate.go     # Generate command
-│   ├── convert.go      # Convert command
-│   └── verify.go       # Verify command
+├── cmd/                 # CLI commands (one file per command, helpers.go for shared error/JSON output)
 ├── pkg/                # Core packages
-│   ├── cert/          # Certificate operations
+│   ├── cert/          # Certificate operations, JSON output, usage name tables
 │   └── ui/            # Terminal UI
+├── internal/           # config (YAML settings), environ (CI/Unicode detection), testutil
 ├── docs/              # Documentation
 └── testdata/          # Test fixtures
 ```
@@ -205,8 +210,12 @@ certwiz/
        Use:   "newcmd",
        Short: "Brief description",
        Long:  `Detailed description`,
-       Run: func(cmd *cobra.Command, args []string) {
-           // Implementation
+       RunE: func(cmd *cobra.Command, args []string) error {
+           if err := doWork(); err != nil {
+               reportError(cmd, err) // JSON on stdout under --json, styled message on stderr otherwise
+               return err
+           }
+           return nil
        },
    }
    
@@ -215,9 +224,9 @@ certwiz/
    }
    ```
 
-2. Add tests in `cmd/newcmd_test.go`
+2. Add tests in `cmd/newcmd_test.go` and add the command name to `expectedCommands` in `cmd/root_test.go`
 
-3. Update documentation
+3. Update documentation and the `## [Unreleased]` section of CHANGELOG.md
 
 ### Adding Certificate Support
 
@@ -241,27 +250,17 @@ certwiz/
 
 ## Release Process
 
-Maintainers handle releases:
-
-1. Update version in code
-2. Update CHANGELOG.md
-3. Create git tag
-4. GitHub Actions builds releases
-5. Update documentation
+Maintainers handle releases. See [releasing.md](releasing.md). In short: bump `version` in `cmd/root.go`, move the Unreleased changelog entries into a dated section, commit, push an annotated `vX.Y.Z` tag, and GoReleaser publishes the release.
 
 ## Getting Help
 
-- Join our [Discord server](https://discord.gg/certwiz)
-- Check [existing issues](https://github.com/certwiz/certwiz/issues)
-- Read the [documentation](https://github.com/certwiz/certwiz/docs)
-- Ask in [Discussions](https://github.com/certwiz/certwiz/discussions)
+- Check [existing issues](https://github.com/trahma/certwiz/issues)
+- Read the [documentation](https://github.com/trahma/certwiz/tree/main/docs)
+- Ask in [Discussions](https://github.com/trahma/certwiz/discussions)
 
 ## Recognition
 
-Contributors are recognized in:
-- CONTRIBUTORS.md file
-- Release notes
-- Project README
+Contributors are recognized in release notes.
 
 ## License
 
